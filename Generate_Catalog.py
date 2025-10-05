@@ -153,8 +153,7 @@ def LoadALFALFA(alftable, flsave):
     RA = (alf['RAdeg_HI']).astype(float)
     Dec = (alf['DECdeg_HI']).astype(float)
 
-Gen_Catalog(zmax=0.5, Dmax=200*u.Mpc, npt=1000, dec1=20, dec2=80, vel_width=48*u.km/u.s, noise=0.01*u.mJy,
-           Fluxlim=False, flname='catalogs_output/VolLim_20to60deg_Dmax200.npy', savelarge=False)
+
 
 
 

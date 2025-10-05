@@ -6,6 +6,9 @@ import Generate_Catalog as cat
 cat.Gen_Catalog(zmax=0.5, npt=10000, savelarge=False, dec1=20, dec2=80, 
             Fluxlim=False, draw=True, flname='/scratch/akanksha/catalogs/VolLim_20to60deg_z0p5.npy')
 
+#cat.Gen_Catalog(zmax=0.5, Dmax=200*u.Mpc, npt=1000, dec1=20, dec2=80, vel_width=48*u.km/u.s, noise=0.01*u.mJy,
+#            Fluxlim=False, flname='catalogs_output/VolLim_20to60deg_Dmax200.npy', savelarge=False)
+
 # N, z = cat.Gen_Catalog(zmax=0.7, npt=20000, footprint=10000*u.deg**2, savelarge=False, dec1=20, dec2=80, sigma=5,
 #             Fluxlim=True, noise=0.0001686*u.Jy, vel_width=58.514*u.km/u.s, draw=False, flname='catalogs_output/VolLim_20to60deg_Dmax500.npy')
 
