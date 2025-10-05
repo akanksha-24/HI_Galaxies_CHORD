@@ -133,4 +133,4 @@ def Check_Spectra(catalog_fl):
     # plt.scatter(MHI, MHI_res)
     # plt.show()
 
-Check_Spectra('catalogs_output/VolLim_20to60deg_Dmax100.npy')
+#Check_Spectra('catalogs_output/VolLim_20to60deg_Dmax100.npy')

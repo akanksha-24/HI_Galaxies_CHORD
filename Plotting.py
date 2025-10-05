@@ -99,7 +99,3 @@ def dndz(catalog=None, N=None, z=None, flname='', compareHans=''):
 #         plt.savefig(flname+'_'+extn[i]+'.png')
 
 
-#param_distributions('catalogs_output/VolLim_20to60deg_Dmax200.npz', flname='VolLim_20to60deg_Dmax200')
-#recover_HIMF('catalogs_output/FluxLim_20to60deg_zmax0p5.npy', MHI=np.logspace(5,11,10000))
-#recover_HIMF('catalogs_output/VolLim_20to60deg_Dmax500.npy', Dmax=500*u.Mpc, VolLim=True, MHI=np.logspace(5,11,10000))
-#MHI_VHI_polynomial()
