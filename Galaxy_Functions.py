@@ -45,10 +45,10 @@ def comoving_volume(zmax, npt=20000, solidang=4*np.pi, cosmo=cosmo_P2018):
 def Comoving_Dist(z, cosmo=cosmo_P2018):
     return cosmo.comoving_distance(z).to(u.Mpc)
 
-def build_z_interp(zmax=5.0, npt=10000, cosmo=cosmo_P2018):
+def build_z_interp(zmax=5.0, npt=10000, cosmo=cosmo_P2018, dtype=np.float32):
     """Build fast interp to invert comoving_distance to get redshift z."""
-    z_grid = np.linspace(0.0, zmax, npt)
-    D = cosmo.comoving_distance(z_grid).to(u.Mpc)  # array in Mpc
+    z_grid = np.linspace(0.0, zmax, npt, dtype=dtype)
+    D = cosmo.comoving_distance(z_grid.astype(np.float64)).to(u.Mpc).value.astype(dtype)
     return interp1d(D, z_grid, kind="linear", bounds_error=False, fill_value=(0.0, zmax))
 
 def VolumeFromDist(D, solidang):
@@ -115,15 +115,17 @@ def Vmax_correct(D, S21, S21lim, solidang):
     Vmax = VolumeFromDist(Dmax, solidang)
     return Vmax
 
-def VHI_polyFit(MHI):
+def VHI_polyFit(MHI, dtype=np.float32):
     '''Polynomial Fit for rotational velocity from Spekkens&Lewis: https://www.overleaf.com/project/5e378eb163ee6f0001cc9a7f'''
+    coeff = np.array([0.0345, -0.955, 9.134, -27.99], dtype=dtype)
     x = np.log10(MHI)
-    lg_VHI = 0.0345*(x**3) - 0.955*(x**2) + 9.134*x - 27.99
+    lg_VHI = coeff[0]*x**3 + coeff[1]*x**2 + coeff[2]*x + coeff[3]
     return 10**lg_VHI
 
-def estimate_W50(Vrot, i, broaden=True, thermal_FWHM=10):
+def estimate_W50(Vrot, i, broaden=True, thermal_FWHM=10, dtype=np.float32):
     '''Get W50 from rotational velocity'''
     W50 = Vrot*2*np.sin(i)
+    thermal_FWHM = np.array(thermal_FWHM, dtype=dtype)
     # Apply thermal broadening - estimating convolution by Gaussian, add in quadrature
     if broaden==True: 
         W50 = np.sqrt(W50**2 + thermal_FWHM**2)

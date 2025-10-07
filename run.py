@@ -3,8 +3,8 @@ import Plotting as plot
 import Generate_Catalog as cat
 
 
-cat.Gen_Catalog(zmax=0.5, npt=10000, savelarge=False, dec1=20, dec2=80, 
-            Fluxlim=False, draw=True, flname='/scratch/akanksha/catalogs/VolLim_20to60deg_z0p5.npy')
+cat.Gen_Catalog(zmax=0.01, npt=10000, savelarge=False, dec1=20, dec2=80, 
+            Fluxlim=False, draw=True, flname='catalogs_output/cataVolLim_20to60deg_z0p01.npy')
 
 # cat.Gen_Catalog(zmax=1, npt=1000000, savelarge=False, dec1=20, dec2=80, 
 #              Fluxlim=False, draw=True, flname='/scratch/akanksha/catalogs/VolLim_20to60deg_z1.npy')
