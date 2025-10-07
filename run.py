@@ -9,7 +9,7 @@ import Generate_Catalog as cat
 # cat.Gen_Catalog(zmax=1, npt=1000000, savelarge=False, dec1=20, dec2=80, 
 #              Fluxlim=False, draw=True, flname='/scratch/akanksha/catalogs/VolLim_20to60deg_z1')
 
-cat.Gen_Catalog(zmax=0.5, Dmax=200, npt=1000, dec1=20, dec2=80,
+cat.Gen_Catalog(zmax=0.5, npt=1000, dec1=20, dec2=80,
            Fluxlim=False, flname='/scratch/akanksha/catalogs/VolLim_20to60deg_z0p5', savelarge=False)
 
 # N, z = cat.Gen_Catalog(zmax=0.7, npt=20000, footprint=10000*u.deg**2, savelarge=False, dec1=20, dec2=80, sigma=5,
