@@ -118,7 +118,7 @@ def Generate_Spectra(size, MHI, W50, D, a=1, w=1, b1=None, b2=None, c=None, xe=N
 
     return final_M, V, S_broad, 
 
-def Check_Spectra(catalog_fl):
+def Save_Spectra(catalog_fl):
     catalog = np.load(catalog_fl)
     size = catalog.shape[0]
     print(size)
@@ -133,4 +133,3 @@ def Check_Spectra(catalog_fl):
     # plt.scatter(MHI, MHI_res)
     # plt.show()
 
-#Check_Spectra('catalogs_output/VolLim_20to60deg_Dmax100.npy')

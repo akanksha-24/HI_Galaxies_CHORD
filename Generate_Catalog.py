@@ -58,12 +58,13 @@ def Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, V1, V2, zinterp, solidang):
     cos_i = np.random.random(N)   # uniform in [0,1]
     i_sample = np.arccos(cos_i)   # inclination angles in [0, π/2] following a sin(i) probablity distribution function
     W50_sample = gf.estimate_W50(VHI_sample, i_sample, broaden=True)
-    #ra_sample, dec_sample = sample_radec(ra1, ra2, dec1, dec2, N)
+    ra_sample, dec_sample = sample_radec(ra1, ra2, dec1, dec2, N)
     D_sample, Vol_sample = sample_in_shell(V1, V2, N, solidang)
-    #z_sample = zinterp(D_sample)
+    z_sample = zinterp(D_sample)
     #Vol_drawn = np.full(N, V2.value)
+    samples = np.column_stack([MHI_sample, VHI_sample, i_sample, W50_sample, ra_sample, dec_sample, D_sample, Vol_sample, z_sample])
     #samples = np.column_stack([MHI_sample, VHI_sample, i_sample, W50_sample, ra_sample, dec_sample, D_sample, Vol_sample, z_sample, Vol_drawn])
-    samples = np.column_stack([MHI_sample, W50_sample, D_sample])
+    #samples = np.column_stack([MHI_sample, W50_sample, D_sample])
     return samples
 
 def Save_Catalog_npz(samples, zmax, solidang, flname, z_arr, N_arr):
