@@ -79,10 +79,10 @@ def Save_Catalog_npz(samples, zmax, solidang, flname, z_arr, N_arr):
                         Volume=samples[:,7],
                         Redshift=samples[:,8])
     
-def Save_large(samples, flname):
-    extn = ['MHI_lg', 'VHI', 'Incl', 'W50', 'RA', 'Dec', 'Distace', 'Volume', 'Redshift']
-    for i in samples.shape[1]:
-        np.save(flname+'_'+extn+'.npy',samples[:,i])
+# def Save_large(samples, flname):
+#     extn = ['MHI_lg', 'VHI', 'Incl', 'W50', 'RA', 'Dec', 'Distace', 'Volume', 'Redshift']
+#     for i in samples.shape[1]:
+#         np.save(flname+'_'+extn+'.npy',samples[:,i])
 
 
 def Gen_Catalog(zmax, npt, dec1, dec2, ra1=0, ra2=360, MHImin=5, MHImax=12, Dmax=None, footprint=None,
@@ -129,12 +129,7 @@ def Gen_Catalog(zmax, npt, dec1, dec2, ra1=0, ra2=360, MHImin=5, MHImax=12, Dmax
     print(f"Runtime:    {end - start:.3f} seconds")
     if draw:
         samples = np.vstack(samples_list)
-        if savelarge==True:
-            Save_large(samples, flname)
-        # if fltype=='npz':
-        #     Save_Catalog_npz(samples, zmax, solidang, flname, z, N_arr)
-        else:
-           np.save(flname, samples)
+        np.save(flname, samples)
     return N_arr, z
 
 
