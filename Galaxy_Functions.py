@@ -34,9 +34,11 @@ def comoving_volume(zmax, npt=20000, solidang=4*np.pi, cosmo=cosmo_P2018):
     # find mid-points
     z = mid_bin(z_arr)
     D = cosmo.comoving_distance(z).to(u.Mpc)
+    H = cosmo.H(z).value  # km/s/Mpc
+    c_kms = c.c.to_value(u.km/u.s)  
     
     # Volume shells:
-    dV_dz = solidang * (D**2) * (c.c.to(u.km/u.s) / cosmo.H(z).to(u.km/u.s/u.Mpc))
+    dV_dz = solidang * (D**2) * (c_kms / H)
     dV = dV_dz * dz
     # Cumulative volume:
     V=np.cumsum(dV)
@@ -99,9 +101,12 @@ def galaxy_density(MHI=MHI_grid, phi_s=phi_s, M_s=M_s, alpha=alpha):
 
 ################################   Galaxy Relations   #######################################
 
-def S_toMHI(S_peak, delV, D):
+def S_toMHI(S_peak, delV, D, unitless=True):
     '''Approximation of HI mass based on S21 integrated flux without spectra'''
-    return ((C21*S_peak*delV*D**2)).to(u.solMass)
+    if unitless:
+        return C21.value*S_peak*delV*D**2
+    else:
+        return ((C21*S_peak*delV*D**2)).to(u.solMass)
 
 def MHI_toS(MHI, delV, D, unitless=True):
     '''Approximation of S21 flux based on HI mass without spectra'''
@@ -128,7 +133,7 @@ def estimate_W50(Vrot, i, broaden=True, thermal_FWHM=10, dtype=np.float32):
     thermal_FWHM = np.array(thermal_FWHM, dtype=dtype)
     # Apply thermal broadening - estimating convolution by Gaussian, add in quadrature
     if broaden==True: 
-        W50 = np.sqrt(W50**2 + thermal_FWHM**2)
+        W50 = np.sqrt(W50**2 + thermal_FWHM**2) # 10 u.km/u.s
     return W50
 
 

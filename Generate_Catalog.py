@@ -90,7 +90,7 @@ def Save_Catalog_npz(samples, zmax, solidang, flname, z_arr, N_arr):
 
 def Gen_Catalog(zmax, npt, dec1, dec2, ra1=0, ra2=360, MHImin=5, MHImax=12,
                     Dmax=None, footprint=None, Fluxlim=False, sigma=1,
-                    noise=0.01*u.mJy, vel_width=10*u.km/u.s, MHIres=10000,
+                    noise=1e-4, vel_width=10, MHIres=10000,
                     draw=True, fltype='npy', flname='catalog.npy',
                     savelarge=True, dtype=np.float32):
     
@@ -126,7 +126,7 @@ def Gen_Catalog(zmax, npt, dec1, dec2, ra1=0, ra2=360, MHImin=5, MHImax=12,
     for i in rank_indices:
         if Fluxlim:
             F_lim = sigma * noise
-            MHImin_i = np.log10(gf.S_toMHI(F_lim, vel_width, D[i]).value)
+            MHImin_i = np.log10(gf.S_toMHI(F_lim, vel_width, D[i], unitless=True))
             MHImin_i = max(5, MHImin_i)
             MHI = np.logspace(MHImin_i, MHImax, MHIres)
             n = gf.galaxy_density(MHI)
