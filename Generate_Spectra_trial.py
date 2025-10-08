@@ -128,7 +128,7 @@ def Generate_Spectra(size, MHI, W50, D, a=1.0, w=1.0,
 
     return final_M, last_V, last_Sb
 
-def Check_Spectra(catalog_fl):
+def Run_Spectra(catalog_fl):
     catalog = np.load(catalog_fl)
     size = catalog.shape[0]
 
@@ -138,7 +138,7 @@ def Check_Spectra(catalog_fl):
     end_i = size if rank == size_mpi-1 else (rank + 1) * chunk_size
 
     local_cat = catalog[start_i:end_i]
-    MHI = 10**local_cat[:,0]
+    MHI = local_cat[:,0]
     W50 = local_cat[:,3]
     D = local_cat[:,6]
 
@@ -152,8 +152,3 @@ def Check_Spectra(catalog_fl):
     print(f"[Rank {rank}] Done and saved — took {t2 - t1:.2f} seconds.")
 
 
-if __name__ == "__main__":
-    ti = time.time()
-    Check_Spectra('catalogs_output/VolLim_20to60deg_Dmax100.npy')
-    tf = time.time()
-    print(f"[Rank {rank}] Total runtime: {tf - ti:.2f} seconds.")

@@ -205,6 +205,11 @@ def LoadALFALFA(alftable, flsave):
     RA = (alf['RAdeg_HI']).astype(float)
     Dec = (alf['DECdeg_HI']).astype(float)
 
+    samples = np.column_stack([10**lg_MHI, Vhelio, SNR, W50, RA, Dec, Dist, S21])
+    np.save(flsave, samples)
+
+
+
 
 
 
