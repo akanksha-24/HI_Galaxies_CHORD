@@ -29,17 +29,15 @@ def get_device_for_rank():
     cp.cuda.Device(dev_id).use()
     return dev_id
 
-def estimate_chunk_size_from_gpu(mem_fraction=0.6, bytes_per_spectrum=1000*4):
-    """
-    Estimate a safe chunk size given an approximate bytes_per_spectrum
-    (default: 1000 float32 points ~ 4 KB). This is heuristic.
-    """
-    dev = cp.cuda.Device()
-    total_mem = dev.total_memory()
-    usable = int(total_mem * mem_fraction)
-    chunk_bytes = usable // bytes_per_spectrum
-    # leave some margin
-    return max(1024, int(chunk_bytes // 2))
+def estimate_chunk_size_from_gpu(mem_fraction=0.55, bytes_per_spectrum=None):
+    """Estimate chunk size based on available GPU memory."""
+    free_bytes, total_bytes = cp.cuda.runtime.memGetInfo()
+    target_bytes = free_bytes * mem_fraction
+    if bytes_per_spectrum is None or bytes_per_spectrum <= 0:
+        bytes_per_spectrum = 4 * 1000  # rough default
+    chunk_size = int(target_bytes // bytes_per_spectrum)
+    print(f"[GPU] total={total_bytes/1e9:.2f} GB, free={free_bytes/1e9:.2f} GB, chunk_size≈{chunk_size}")
+    return chunk_size
 
 # -----------------------------------------------------------------------------
 # GPU Busy + helpers (vectorized)
