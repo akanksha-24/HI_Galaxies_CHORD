@@ -3,6 +3,7 @@ import time
 import numpy as np
 from mpi4py import MPI
 import sys
+from cupyx.scipy import special
 
 # GPU libs
 try:
@@ -62,8 +63,8 @@ def Busy_general_batch_cupy(x, a, b1, b2, xe, xp, c, w):
 
     # Broadcast shapes: (n_p, 1) * (1, n_x) -> (n_p, n_x)
     # err_p = erf(b1*(w + x - xe)) + 1.0
-    err_p = cp.erf(b1_g[:, None] * (w + x_gpu[None, :] - xe_g[:, None])) + 1.0
-    err_m = cp.erf(b2_g[:, None] * (w - x_gpu[None, :] + xe_g[:, None])) + 1.0
+    err_p = special.erf(b1_g[:, None] * (w + x_gpu[None, :] - xe_g[:, None])) + 1.0
+    err_m = special.erf(b2_g[:, None] * (w - x_gpu[None, :] + xe_g[:, None])) + 1.0
     pbola = c_g[:, None] * ((x_gpu[None, :] - xp_g[:, None])**2) + 1.0
 
     B = (a / 4.0) * err_p * err_m * pbola
@@ -307,7 +308,7 @@ def Run_Spectra_GPU(catalog_fl):
     t1 = time.time()
 
     final_M, V, S_broad = Generate_Spectra_GPU(len(MHI), MHI, W50, D)
-    np.save(f"spectra_rank{rank}.npy", np.asarray([V, S_broad], dtype=object))
+    np.save(f"spectra_gpu_rank{rank}.npy", np.asarray([V, S_broad], dtype=object))
 
     t2 = time.time()
     print(f"[Rank {rank}] Done and saved — took {t2 - t1:.2f} seconds.")
