@@ -1,7 +1,7 @@
 import Galaxy_Functions as gf
 import Plotting as plot
 import Generate_Catalog as cat
-import Generate_Spectra_trial as spec 
+import Generate_Spectra as spec 
 import time
 
 if __name__ == "__main__":
