@@ -30,7 +30,7 @@ def get_device_for_rank():
     cp.cuda.Device(dev_id).use()
     return dev_id
 
-def estimate_chunk_size_from_gpu(mem_fraction=0.55, bytes_per_spectrum=None):
+def estimate_chunk_size_from_gpu(mem_fraction=0.3, bytes_per_spectrum=None):
     """Estimate chunk size based on available GPU memory."""
     free_bytes, total_bytes = cp.cuda.runtime.memGetInfo()
     target_bytes = free_bytes * mem_fraction
