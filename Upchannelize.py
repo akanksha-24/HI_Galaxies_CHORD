@@ -136,5 +136,6 @@ if __name__ == "__main__":
     cp.save('f_{fmin}_{fmax}_{U}.npy', f)
     cp.save('c_{fmin}_{fmax}_{U}.npy', c)
     t2 = time.time()
+    print(f"Finished. Total Runtime {t2-t1} seconds")
 
 
