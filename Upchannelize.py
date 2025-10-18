@@ -1,6 +1,9 @@
 import cupy as cp
 import sys
 import time
+import glob
+import numpy as np
+import os
 #from mpi4py import MPI
 
 # ------------------ Frequency Utilities ------------------ #
@@ -108,7 +111,56 @@ def run_serial(fmin, fmax, U, coarse_chunk_size=32, fine_chunk_size=1000):
             cp.save(f'c_c{i}_f{j}.npy', c_chunk)
             cp.save(f'f_c{i}_f{j}.npy', f_chunk)
 
-            
+def numeric_sort(files, pattern=r'R_c(\d+)_f(\d+).npy'):
+    return sorted(files, key=lambda x: [int(i) for i in re.findall(pattern, x)[0]])
+
+def merge_chunks(outdir, delete_chunks=True):
+    # Sort files numerically
+    R_files = numeric_sort(glob.glob(f"{outdir}/R_c*.npy"))
+    c_files = numeric_sort(glob.glob(f"{outdir}/c_c*.npy"), pattern=r'c_c(\d+)_f(\d+).npy')
+    f_files = numeric_sort(glob.glob(f"{outdir}/f_c*.npy"), pattern=r'f_c(\d+)_f(\d+).npy')
+
+    if not R_files:
+        raise FileNotFoundError("No chunk files found in directory.")
+
+    # Load first chunk to get shapes
+    first_R = np.load(R_files[0], mmap_mode='r')
+    first_c = np.load(c_files[0], mmap_mode='r')
+    first_f = np.load(f_files[0], mmap_mode='r')
+
+    ncoarse_total = sum(np.load(f, mmap_mode='r').shape[0] for f in c_files)
+    nfreq_total = first_f.shape[0]
+    U = first_R.shape[0] // first_c.shape[0]
+
+    # Prepare output arrays
+    R_merged = np.empty((ncoarse_total*U, nfreq_total), dtype=first_R.dtype)
+    c_merged = np.empty(ncoarse_total, dtype=first_c.dtype)
+    f_merged = np.empty(nfreq_total, dtype=first_f.dtype)
+
+    # Fill f_merged (same for all chunks)
+    f_merged[:] = first_f[:]
+
+    coarse_offset = 0
+    for R_file, c_file in zip(R_files, c_files):
+        R_chunk = np.load(R_file)
+        c_chunk = np.load(c_file)
+        n_coarse = c_chunk.shape[0]
+
+        R_merged[coarse_offset*U:(coarse_offset+n_coarse)*U, :] = R_chunk
+        c_merged[coarse_offset:coarse_offset+n_coarse] = c_chunk
+        coarse_offset += n_coarse
+
+    # Save merged arrays
+    np.save(os.path.join(outdir, 'R_merged.npy'), R_merged)
+    np.save(os.path.join(outdir, 'c_merged.npy'), c_merged)
+    np.save(os.path.join(outdir, 'f_merged.npy'), f_merged)
+
+    if delete_chunks:
+        for f in R_files + c_files + f_files:
+            os.remove(f)
+
+    print("Chunks merged successfully.")
+
 # def run_parallel_mpi(fmin, fmax, U, coarse_chunk_size=128):
 #     comm = MPI.COMM_WORLD
 #     rank = comm.Get_rank()
