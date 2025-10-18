@@ -16,7 +16,7 @@ def coarsechans_index(fmin, fmax, range=[300,1500], nchans=8192, sampling_rate=0
 
 
 def idealchans_index(fmin, fmax, ideal_res, range=[300,1500], nchans=8192, sampling_rate=0.417):
-    f_ideal = cp.linspace(fmin, fmax, (fmax-fmin)/ideal_res)
+    f_ideal = cp.linspace(fmin, fmax, int((fmax-fmin)/ideal_res))
     bw = chord_bandwidth(range, nchans, sampling_rate)
     chan_index = f_ideal / bw
     return chan_index
