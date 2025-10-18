@@ -104,7 +104,7 @@ def response_mtx(c, f, U, taps=4, N=8192*2):
     f = cp.asarray(f)
     
     # Coarse channelization
-    submtx_chan = c.T - f[:, 0]  # shape: (ncoarse, nfreq)
+    submtx_chan = c[:, None] - f[None, :]
     submtx_chan = weight_chan(submtx_chan, taps, N)
     mtx_chan = cp.repeat(submtx_chan, U, axis=0)
 
