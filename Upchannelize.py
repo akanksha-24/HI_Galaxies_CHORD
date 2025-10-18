@@ -86,6 +86,15 @@ def response_mtx(c, f, U, taps=4, N=8192*2, dtype=cp.float32):
 
 # ------------------ MPI Parallel Execution ------------------ #
 
+def run(fmin, fmax, U, coarse_chunk_size=128):
+    coarse = coarsechans_index(fmin=fmin, fmax=fmax)
+    f = idealchans_index(fmin, fmax, ideal_res=0.001)
+    R = response_mtx(coarse, f, U)
+
+    cp.save(f'R_{fmin}_{fmax}_{U}.npy', R)
+    cp.save(f'c_{fmin}_{fmax}_{U}.npy', coarse)
+    cp.save(f'f_{fmin}_{fmax}_{U}.npy', f)
+
 def run_serial(fmin, fmax, U, coarse_chunk_size=128):
     coarse = coarsechans_index(fmin=fmin, fmax=fmax)
     f = idealchans_index(fmin, fmax, ideal_res=0.001)
@@ -128,6 +137,7 @@ if __name__ == "__main__":
         print("Usage: python Upchannelize.py <fmin> <fmax> <U>")
         sys.exit(1)
 
+    print(f"Generating Response Matrix")
     fmin = float(sys.argv[1])
     fmax = float(sys.argv[2])
     U = int(sys.argv[3])
@@ -135,4 +145,4 @@ if __name__ == "__main__":
     run_serial(fmin, fmax, U)
 
     t2 = time.time()
-    print(f"[Rank] Finished. Total Runtime {t2 - t1:.2f} seconds")
+    print(f"Finished. Total Runtime {t2 - t1:.2f} seconds")
