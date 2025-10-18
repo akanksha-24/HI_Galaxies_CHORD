@@ -86,6 +86,18 @@ def response_mtx(c, f, U, taps=4, N=8192*2, dtype=cp.float32):
 
 # ------------------ MPI Parallel Execution ------------------ #
 
+def run_serial(fmin, fmax, U, coarse_chunk_size=128):
+    coarse = coarsechans_index(fmin=fmin, fmax=fmax)
+    f = idealchans_index(fmin, fmax, ideal_res=0.001)
+
+    # further chunk if needed to save memory
+    for i in range(0, len(coarse), coarse_chunk_size):
+        c_chunk = coarse[i:i+coarse_chunk_size]
+        R_chunk = response_mtx(c_chunk, f, U)
+        cp.save(f'R_chunk{i}.npy', R_chunk)
+        cp.save(f'c_chunk{i}.npy', c_chunk)
+        cp.save(f'f_chunk{i}.npy', f)
+
 def run_parallel_mpi(fmin, fmax, U, coarse_chunk_size=128):
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
@@ -120,7 +132,7 @@ if __name__ == "__main__":
     fmax = float(sys.argv[2])
     U = int(sys.argv[3])
 
-    run_parallel_mpi(fmin, fmax, U)
+    run_serial(fmin, fmax, U)
 
     t2 = time.time()
     print(f"[Rank] Finished. Total Runtime {t2 - t1:.2f} seconds")
