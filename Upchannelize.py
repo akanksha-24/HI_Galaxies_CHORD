@@ -95,28 +95,82 @@ def scaling(U):
 
 ########################### Full Response Matrix (GPU) ###########################
 
-def response_mtx(c, f, U, taps=4, N=8192*2):
+# def response_mtx(c, f, U, taps=4, N=8192*2):
+#     """
+#     Computes full PFB response matrix (coarse + fine channels) on GPU.
+#     Returns a cupy array.
+#     """
+#     c = cp.asarray(c)
+#     f = cp.asarray(f)
+    
+#     # Coarse channelization
+#     submtx_chan = c[:, None] - f[None, :]
+#     submtx_chan = weight_chan(submtx_chan, taps, N)
+#     mtx_chan = cp.repeat(submtx_chan, U, axis=0)
+
+#     # Fine upchannelization
+#     submtx_upchan = cp.tile(cp.arange(U, dtype=cp.float32), (f.shape[0], 1)).T
+#     submtx_upchan = (U - 1)/U - 2*submtx_upchan/U + 2*f[None, :]
+#     submtx_upchan = weight_upchan(submtx_upchan, U, taps)
+#     mtx_upchan = cp.tile(submtx_upchan, (len(c[0]), 1))
+
+#     response_mtx = mtx_chan * mtx_upchan
+
+#     return response_mtx
+
+def response_mtx(c, f, U, taps=4, N=8192*2, dtype=cp.float32):
     """
     Computes full PFB response matrix (coarse + fine channels) on GPU.
-    Returns a cupy array.
+    Returns a cupy array of shape (ncoarse * U, nfreq).
     """
-    c = cp.asarray(c)
-    f = cp.asarray(f)
-    
+    # ensure Cupy arrays and correct dtype
+    c = cp.asarray(c, dtype=dtype)         # shape (ncoarse,)
+    f = cp.asarray(f, dtype=dtype)         # shape (nfreq,)
+
+    ncoarse = c.shape[0]
+    nfreq = f.shape[0]
+
+    # ---------------------------
     # Coarse channelization
+    # ---------------------------
+    # differences (ncoarse, nfreq)
     submtx_chan = c[:, None] - f[None, :]
-    submtx_chan = weight_chan(submtx_chan, taps, N)
+    # weight_chan expects (ncoarse, nfreq) input and returns (ncoarse, nfreq)
+    submtx_chan = weight_chan(submtx_chan, taps=taps, N=N)
+    # repeat each coarse-row U times -> shape (ncoarse * U, nfreq)
     mtx_chan = cp.repeat(submtx_chan, U, axis=0)
 
+    # ---------------------------
     # Fine upchannelization
-    submtx_upchan = cp.tile(cp.arange(U, dtype=cp.float32), (f.shape[0], 1)).T
-    submtx_upchan = (U - 1)/U - 2*submtx_upchan/U + 2*f[None, :]
-    submtx_upchan = weight_upchan(submtx_upchan, U, taps)
-    mtx_upchan = cp.tile(submtx_upchan, (len(c[0]), 1))
+    # ---------------------------
+    # Build upchannel index u: shape (U,)
+    u = cp.arange(U, dtype=dtype)         # [0,1,...,U-1]
 
-    response_mtx = mtx_chan * mtx_upchan
+    # Construct (ncoarse, U, nfreq) array for the argument of weight_upchan:
+    # mtx_up_input[i, u, j] = ((c[i] * U) + u - f[j]) / U
+    # Explanation: the effective fine-channel index within coarse c is c*U + u;
+    # subtract f (in the same channel-index units) and normalize by U if required
+    # by your exponential convention (see discussion below).
+    c_exp = c[:, None, None]               # (ncoarse, 1, 1)
+    u_exp = u[None, :, None]               # (1, U, 1)
+    f_exp = f[None, None, :]               # (1, 1, nfreq)
+
+    # NOTE: this formula is the general, unit-consistent form:
+    mtx_up_input = (c_exp * U + u_exp - f_exp) / U   # (ncoarse, U, nfreq)
+
+    # Flatten to (ncoarse*U, nfreq) because weight_upchan expects a 2D mtx
+    mtx_up_2d = mtx_up_input.reshape(-1, nfreq)
+
+    # Compute upchannel weights (returns shape (ncoarse*U, nfreq))
+    mtx_upchan = weight_upchan(mtx_up_2d, U, taps=taps)
+
+    # ---------------------------
+    # Final response: elementwise product
+    # ---------------------------
+    response_mtx = mtx_chan * mtx_upchan   # both are (ncoarse*U, nfreq)
 
     return response_mtx
+
 
 
 if __name__ == "__main__":
