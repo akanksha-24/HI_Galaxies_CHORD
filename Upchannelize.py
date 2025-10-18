@@ -99,7 +99,7 @@ def run(fmin, fmax, U):
     cp.save(f'c_{fmin}_{fmax}_{U}.npy', coarse)
     cp.save(f'f_{fmin}_{fmax}_{U}.npy', f)
 
-def run_serial(fmin, fmax, U, coarse_chunk_size=32, fine_chunk_size=1000):
+def run_serial(fmin, fmax, U, coarse_chunk_size=32, fine_chunk_size=1000, outdir='/scratch/akanksha/upchan/'):
     coarse = coarsechans_index(fmin=fmin, fmax=fmax)
     f_full = idealchans_index(fmin, fmax, ideal_res=0.01)
 
@@ -108,9 +108,9 @@ def run_serial(fmin, fmax, U, coarse_chunk_size=32, fine_chunk_size=1000):
         for j in range(0, len(f_full), fine_chunk_size):
             f_chunk = f_full[j:j+fine_chunk_size]
             R_chunk = response_mtx(c_chunk, f_chunk, U)
-            cp.save(f'R_{fmin}_{fmax}_{U}_c{i}_f{j}.npy', R_chunk)
-            cp.save(f'c_{fmin}_{fmax}_{U}_c{i}_f{j}.npy', c_chunk)
-            cp.save(f'f_{fmin}_{fmax}_{U}_c{i}_f{j}.npy', f_chunk)
+            cp.save(f'{outdir}/R_c{i}_f{j}.npy', R_chunk)
+            cp.save(f'{outdir}/c_c{i}_f{j}.npy', c_chunk)
+            cp.save(f'{outdir}/f_c{i}_f{j}.npy', f_chunk)
 
 def numeric_sort(files, pattern=r'R_c(\d+)_f(\d+).npy'):
     return sorted(files, key=lambda x: [int(i) for i in re.findall(pattern, x)[0]])
@@ -197,7 +197,7 @@ if __name__ == "__main__":
     fmax = float(sys.argv[2])
     U = int(sys.argv[3])
 
-    run_serial(fmin, fmax, U)
+    run_serial(fmin, fmax, U, outdir=f'/scratch/akanksha/upchan/{fmin}_{fmax}_U{U}')
 
     t2 = time.time()
     print(f"Finished. Total Runtime {t2 - t1:.2f} seconds")
