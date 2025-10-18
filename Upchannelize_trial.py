@@ -2,7 +2,7 @@ import sys
 import time
 import math
 import numpy as np
-from numba import cuda, float32, complex64
+from numba import cuda
 
 # ------------------ Frequency Utilities ------------------ #
 
@@ -80,7 +80,7 @@ def response_mtx(c, f, U, taps=4, N=8192*2):
             cf[i,j] = c[i] - f[j]
 
     # Coarse channelization
-    W_coarse = cuda.device_array((ncoarse, nfreq), dtype=complex64)
+    W_coarse = cuda.device_array((ncoarse, nfreq), dtype=np.complex64)
     threadsperblock = (16, 16)
     blockspergrid_x = math.ceil(ncoarse / threadsperblock[0])
     blockspergrid_y = math.ceil(nfreq / threadsperblock[1])
@@ -98,7 +98,7 @@ def response_mtx(c, f, U, taps=4, N=8192*2):
             for j in range(nfreq):
                 cu[i*U + u, j] = (c[i]*U + u - f[j]) / U
 
-    W_up = cuda.device_array((ncoarse*U, nfreq), dtype=complex64)
+    W_up = cuda.device_array((ncoarse*U, nfreq), dtype=np.complex64)
     blockspergrid_x = math.ceil(cu.shape[0] / threadsperblock[0])
     blockspergrid_y = math.ceil(nfreq / threadsperblock[1])
     weight_upchan_kernel[(blockspergrid_x, blockspergrid_y), threadsperblock](cu, U, W_up, taps)
