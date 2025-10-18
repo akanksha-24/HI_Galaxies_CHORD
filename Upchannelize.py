@@ -4,6 +4,7 @@ import time
 import glob
 import numpy as np
 import os
+import re
 #from mpi4py import MPI
 
 # ------------------ Frequency Utilities ------------------ #
@@ -91,25 +92,25 @@ def response_mtx(c, f, U, taps=4, N=8192*2, dtype=cp.float32):
 
 def run(fmin, fmax, U):
     coarse = coarsechans_index(fmin=fmin, fmax=fmax)
-    f = idealchans_index(fmin, fmax, ideal_res=0.001)
+    f = idealchans_index(fmin, fmax, ideal_res=0.01)
     R = response_mtx(coarse, f, U)
 
     cp.save(f'R_{fmin}_{fmax}_{U}.npy', R)
     cp.save(f'c_{fmin}_{fmax}_{U}.npy', coarse)
     cp.save(f'f_{fmin}_{fmax}_{U}.npy', f)
 
-def run_serial(fmin, fmax, U, coarse_chunk_size=32, fine_chunk_size=1000):
+def run_serial(fmin, fmax, U, coarse_chunk_size=64, fine_chunk_size=1000):
     coarse = coarsechans_index(fmin=fmin, fmax=fmax)
-    f_full = idealchans_index(fmin, fmax, ideal_res=0.001)
+    f_full = idealchans_index(fmin, fmax, ideal_res=0.01)
 
     for i in range(0, len(coarse), coarse_chunk_size):
         c_chunk = coarse[i:i+coarse_chunk_size]
         for j in range(0, len(f_full), fine_chunk_size):
             f_chunk = f_full[j:j+fine_chunk_size]
             R_chunk = response_mtx(c_chunk, f_chunk, U)
-            cp.save(f'R_c{i}_f{j}.npy', R_chunk)
-            cp.save(f'c_c{i}_f{j}.npy', c_chunk)
-            cp.save(f'f_c{i}_f{j}.npy', f_chunk)
+            cp.save(f'R_{fmin}_{fmax}_{U}_c{i}_f{j}.npy', R_chunk)
+            cp.save(f'c_{fmin}_{fmax}_{U}_c{i}_f{j}.npy', c_chunk)
+            cp.save(f'f_{fmin}_{fmax}_{U}_c{i}_f{j}.npy', f_chunk)
 
 def numeric_sort(files, pattern=r'R_c(\d+)_f(\d+).npy'):
     return sorted(files, key=lambda x: [int(i) for i in re.findall(pattern, x)[0]])
