@@ -90,16 +90,16 @@ def response_mtx(c, f, U, taps=4, N=8192*2, dtype=cp.float32):
 
 # ------------------ MPI Parallel Execution ------------------ #
 
-def run(fmin, fmax, U):
-    coarse = coarsechans_index(fmin=fmin, fmax=fmax)
-    f = idealchans_index(fmin, fmax, ideal_res=0.01)
-    R = response_mtx(coarse, f, U)
+# def run(fmin, fmax, U):
+#     coarse = coarsechans_index(fmin=fmin, fmax=fmax)
+#     f = idealchans_index(fmin, fmax, ideal_res=0.01)
+#     R = response_mtx(coarse, f, U)
 
-    cp.save(f'R_{fmin}_{fmax}_{U}.npy', R)
-    cp.save(f'c_{fmin}_{fmax}_{U}.npy', coarse)
-    cp.save(f'f_{fmin}_{fmax}_{U}.npy', f)
+#     cp.save(f'R_{fmin}_{fmax}_{U}.npy', R)
+#     cp.save(f'c_{fmin}_{fmax}_{U}.npy', coarse)
+#     cp.save(f'f_{fmin}_{fmax}_{U}.npy', f)
 
-def run_serial(fmin, fmax, U, coarse_chunk_size=32, fine_chunk_size=1000, outdir='/scratch/akanksha/upchan/'):
+def run_serial(fmin, fmax, U, coarse_chunk_size=64, fine_chunk_size=1000, outdir='/scratch/akanksha/upchan/'):
     coarse = coarsechans_index(fmin=fmin, fmax=fmax)
     f_full = idealchans_index(fmin, fmax, ideal_res=0.01)
 
