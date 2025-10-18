@@ -1,11 +1,13 @@
 import cupy as cp
 import sys
 import time
+from mpi4py import MPI
+
+# ------------------ Frequency Utilities ------------------ #
 
 def chord_bandwidth(range=[300,1500], nchans=8192, sampling_rate=0.417):
-    freq_range = (1 / (sampling_rate * 1e-3)) # the 1e-3 converts a sampling rate in nano secs to micro secs, to give a frequency in MHz
+    freq_range = (1 / (sampling_rate * 1e-3))  # convert sampling rate in ns to MHz
     bandwidth = freq_range / (nchans*2)
-    #bandwidth = (range[1] - range[0])/nchans 
     return bandwidth
 
 def coarsechans_index(fmin, fmax, range=[300,1500], nchans=8192, sampling_rate=0.417):
@@ -14,183 +16,111 @@ def coarsechans_index(fmin, fmax, range=[300,1500], nchans=8192, sampling_rate=0
     min_index = float(cp.ceil((fmin - range[0]) / bw))
     return cp.arange(min_index, max_index + 1)
 
-
 def idealchans_index(fmin, fmax, ideal_res, range=[300,1500], nchans=8192, sampling_rate=0.417):
     f_ideal = cp.linspace(fmin, fmax, int((fmax-fmin)/ideal_res))
     bw = chord_bandwidth(range, nchans, sampling_rate)
     chan_index = f_ideal / bw
     return chan_index
 
-########################### Window Function (GPU) ###########################
+# ------------------ Window Function ------------------ #
 
 def window(index, taps=4, N=8192*2, dtype=cp.float32):
-    """
-    Sinc-Hanning window 
-    """
     index = cp.asarray(index, dtype=dtype)
     center = taps * N / 2
     scale = taps * N - 1
     W = (cp.cos(cp.pi * (index - center) / scale))**2 * cp.sinc((index - center)/N)
     return W.astype(dtype)
 
-
-########################### Exponentials (GPU) ###########################
+# ------------------ Exponentials ------------------ #
 
 def exponential_chan(s, mtx, N=8192*2):
-    """
-    First-round PFB exponential: e^{-2 pi i (c-f) s / N}.
-    """
     s = cp.asarray(s, dtype=cp.float32).reshape(1, -1)
     mtx = cp.asarray(mtx, dtype=cp.float32).reshape(mtx.shape[0], mtx.shape[1], 1)
-    v = mtx * s
-    return cp.exp(-2j * cp.pi * v / N)
-
+    return cp.exp(-2j * cp.pi * (mtx * s) / N)
 
 def exponential_upchan(s, mtx):
-    """
-    Second-round PFB exponential: e^{i pi (c u - f) k}.
-    """
     s = cp.asarray(s, dtype=cp.float32).reshape(1, -1)
     mtx = cp.asarray(mtx, dtype=cp.float32).reshape(mtx.shape[0], mtx.shape[1], 1)
-    v = mtx * s
-    return cp.exp(1j * cp.pi * v)
+    return cp.exp(1j * cp.pi * (mtx * s))
 
-
-########################### First-round PFB ###########################
+# ------------------ PFB Stages ------------------ #
 
 def weight_chan(cf, taps=4, N=8192*2):
-    """
-    First-round PFB channelization on GPU.
-    """
     j = cp.arange(taps * N, dtype=cp.float32).reshape(1, -1)
-    summation = window(j, taps, N) * exponential_chan(j, cf, N)
-    return cp.sum(summation, axis=2)
-
-
-########################### Second-round PFB ###########################
+    return cp.sum(window(j, taps, N) * exponential_chan(j, cf, N), axis=2)
 
 def weight_upchan(cfu, U, taps=4):
-    """
-    Second-round PFB channelization on GPU.
-    """
     k = cp.arange(taps*U, dtype=cp.float32).reshape(1, -1)
-    summation = window(k, taps, U) * exponential_upchan(k, cfu)
-    return cp.sum(summation, axis=2)
+    return cp.sum(window(k, taps, U) * exponential_upchan(k, cfu), axis=2)
 
-
-########################### Scaling Factors ###########################
+# ------------------ Scaling Factors ------------------ #
 
 def scaling(U):
-    factors = {1: 1.216103148777748e-10,
-               2: 7.841991167761238e-11,
-               4: 3.195692185478832e-11,
-               8: 1.5098060514380606e-11,
-               16: 7.437551472089143e-12,
-               32: 3.701749876806638e-12,
-               64: 1.847847543734494e-12}
+    factors = {1: 1.216e-10, 2: 7.84e-11, 4: 3.20e-11, 8: 1.51e-11,
+               16: 7.44e-12, 32: 3.70e-12, 64: 1.85e-12}
     if U not in factors:
         raise ValueError("U must be a power of 2 between 1 and 64.")
     return factors[U]
 
-
-########################### Full Response Matrix (GPU) ###########################
-
-# def response_mtx(c, f, U, taps=4, N=8192*2):
-#     """
-#     Computes full PFB response matrix (coarse + fine channels) on GPU.
-#     Returns a cupy array.
-#     """
-#     c = cp.asarray(c)
-#     f = cp.asarray(f)
-    
-#     # Coarse channelization
-#     submtx_chan = c[:, None] - f[None, :]
-#     submtx_chan = weight_chan(submtx_chan, taps, N)
-#     mtx_chan = cp.repeat(submtx_chan, U, axis=0)
-
-#     # Fine upchannelization
-#     submtx_upchan = cp.tile(cp.arange(U, dtype=cp.float32), (f.shape[0], 1)).T
-#     submtx_upchan = (U - 1)/U - 2*submtx_upchan/U + 2*f[None, :]
-#     submtx_upchan = weight_upchan(submtx_upchan, U, taps)
-#     mtx_upchan = cp.tile(submtx_upchan, (len(c[0]), 1))
-
-#     response_mtx = mtx_chan * mtx_upchan
-
-#     return response_mtx
+# ------------------ Full Response Matrix ------------------ #
 
 def response_mtx(c, f, U, taps=4, N=8192*2, dtype=cp.float32):
-    """
-    Computes full PFB response matrix (coarse + fine channels) on GPU.
-    Returns a cupy array of shape (ncoarse * U, nfreq).
-    """
-    # ensure Cupy arrays and correct dtype
-    c = cp.asarray(c, dtype=dtype)         # shape (ncoarse,)
-    f = cp.asarray(f, dtype=dtype)         # shape (nfreq,)
+    c = cp.asarray(c, dtype=dtype)
+    f = cp.asarray(f, dtype=dtype)
+    ncoarse, nfreq = c.shape[0], f.shape[0]
 
-    ncoarse = c.shape[0]
-    nfreq = f.shape[0]
-
-    # ---------------------------
     # Coarse channelization
-    # ---------------------------
-    # differences (ncoarse, nfreq)
-    submtx_chan = c[:, None] - f[None, :]
-    # weight_chan expects (ncoarse, nfreq) input and returns (ncoarse, nfreq)
-    submtx_chan = weight_chan(submtx_chan, taps=taps, N=N)
-    # repeat each coarse-row U times -> shape (ncoarse * U, nfreq)
+    submtx_chan = weight_chan(c[:, None] - f[None, :], taps=taps, N=N)
     mtx_chan = cp.repeat(submtx_chan, U, axis=0)
 
-    # ---------------------------
     # Fine upchannelization
-    # ---------------------------
-    # Build upchannel index u: shape (U,)
-    u = cp.arange(U, dtype=dtype)         # [0,1,...,U-1]
-
-    # Construct (ncoarse, U, nfreq) array for the argument of weight_upchan:
-    # mtx_up_input[i, u, j] = ((c[i] * U) + u - f[j]) / U
-    # Explanation: the effective fine-channel index within coarse c is c*U + u;
-    # subtract f (in the same channel-index units) and normalize by U if required
-    # by your exponential convention (see discussion below).
-    c_exp = c[:, None, None]               # (ncoarse, 1, 1)
-    u_exp = u[None, :, None]               # (1, U, 1)
-    f_exp = f[None, None, :]               # (1, 1, nfreq)
-
-    # NOTE: this formula is the general, unit-consistent form:
-    mtx_up_input = (c_exp * U + u_exp - f_exp) / U   # (ncoarse, U, nfreq)
-
-    # Flatten to (ncoarse*U, nfreq) because weight_upchan expects a 2D mtx
+    u = cp.arange(U, dtype=dtype)
+    c_exp = c[:, None, None]
+    u_exp = u[None, :, None]
+    f_exp = f[None, None, :]
+    mtx_up_input = (c_exp * U + u_exp - f_exp) / U
     mtx_up_2d = mtx_up_input.reshape(-1, nfreq)
-
-    # Compute upchannel weights (returns shape (ncoarse*U, nfreq))
     mtx_upchan = weight_upchan(mtx_up_2d, U, taps=taps)
 
-    # ---------------------------
-    # Final response: elementwise product
-    # ---------------------------
-    response_mtx = mtx_chan * mtx_upchan   # both are (ncoarse*U, nfreq)
+    return mtx_chan * mtx_upchan
 
-    return response_mtx
+# ------------------ MPI Parallel Execution ------------------ #
 
+def run_parallel_mpi(fmin, fmax, U, coarse_chunk_size=128):
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
 
+    coarse = coarsechans_index(fmin=fmin, fmax=fmax)
+    f = idealchans_index(fmin, fmax, ideal_res=0.001)
+
+    # split coarse channels across ranks
+    coarse_per_rank = len(coarse) // size
+    start = rank * coarse_per_rank
+    end = (rank+1) * coarse_per_rank if rank != size-1 else len(coarse)
+    coarse_chunk = coarse[start:end]
+
+    # further chunk if needed to save memory
+    for i in range(0, len(coarse_chunk), coarse_chunk_size):
+        c_subchunk = coarse_chunk[i:i+coarse_chunk_size]
+        R_chunk = response_mtx(c_subchunk, f, U)
+        cp.save(f'R_rank{rank}_chunk{i}.npy', R_chunk)
+        cp.save(f'c_rank{rank}_chunk{i}.npy', c_subchunk)
+        cp.save(f'f_rank{rank}_chunk{i}.npy', f)
+
+# ------------------ Main ------------------ #
 
 if __name__ == "__main__":
-    # Example usage: mpirun -n 48 python run_gpu.py <catalog.npy>
     t1 = time.time()
-    print("Generating Response Matrix...")
-
     if len(sys.argv) < 4:
         print("Usage: python Upchannelize.py <fmin> <fmax> <U>")
         sys.exit(1)
+
     fmin = float(sys.argv[1])
     fmax = float(sys.argv[2])
     U = int(sys.argv[3])
-    coarse = coarsechans_index(fmin=fmin, fmax=fmax)
-    f = idealchans_index(fmin, fmax, ideal_res=0.001)
-    R = response_mtx(coarse, f, U, taps=4, N=8192*2)
-    cp.save(f'R_{fmin}_{fmax}_{U}.npy', R)
-    cp.save(f'f_{fmin}_{fmax}_{U}.npy', f)
-    cp.save(f'c_{fmin}_{fmax}_{U}.npy', coarse)
+
+    run_parallel_mpi(fmin, fmax, U)
+
     t2 = time.time()
-    print(f"Finished. Total Runtime {t2 - t1:.2f} seconds")
-
-
+    print(f"[Rank] Finished. Total Runtime {t2 - t1:.2f} seconds")
