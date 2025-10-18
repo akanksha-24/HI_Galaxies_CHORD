@@ -197,7 +197,7 @@ if __name__ == "__main__":
     fmax = float(sys.argv[2])
     U = int(sys.argv[3])
 
-    run_serial(fmin, fmax, U, outdir=f'/scratch/akanksha/upchan/{fmin}_{fmax}_U{U}')
+    run_serial(fmin, fmax, U, outdir=f'/scratch/akanksha/upchan/{int(fmin)}_{int(fmax)}_U{U}')
 
     t2 = time.time()
     print(f"Finished. Total Runtime {t2 - t1:.2f} seconds")
