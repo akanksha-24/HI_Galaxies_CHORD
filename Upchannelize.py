@@ -110,7 +110,7 @@ def response_mtx(c, f, U, taps=4, N=8192*2):
 
     # Fine upchannelization
     submtx_upchan = cp.tile(cp.arange(U, dtype=cp.float32), (f.shape[0], 1)).T
-    submtx_upchan = (U-1)/U - 2*submtx_upchan/U + 2*f[:,0]
+    submtx_upchan = (U - 1)/U - 2*submtx_upchan/U + 2*f[None, :]
     submtx_upchan = weight_upchan(submtx_upchan, U, taps)
     mtx_upchan = cp.tile(submtx_upchan, (len(c[0]), 1))
 
