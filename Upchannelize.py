@@ -98,7 +98,7 @@ def run(fmin, fmax, U):
     cp.save(f'c_{fmin}_{fmax}_{U}.npy', coarse)
     cp.save(f'f_{fmin}_{fmax}_{U}.npy', f)
 
-def run_serial(fmin, fmax, U, coarse_chunk_size=64, fine_chunk_size=1000):
+def run_serial(fmin, fmax, U, coarse_chunk_size=32, fine_chunk_size=1000):
     coarse = coarsechans_index(fmin=fmin, fmax=fmax)
     f_full = idealchans_index(fmin, fmax, ideal_res=0.001)
 
