@@ -95,18 +95,20 @@ def run(fmin, fmax, U):
     cp.save(f'c_{fmin}_{fmax}_{U}.npy', coarse)
     cp.save(f'f_{fmin}_{fmax}_{U}.npy', f)
 
-def run_serial(fmin, fmax, U, coarse_chunk_size=32):
+def run_serial(fmin, fmax, U, coarse_chunk_size=32, fine_chunk_size=1000):
     coarse = coarsechans_index(fmin=fmin, fmax=fmax)
-    f = idealchans_index(fmin, fmax, ideal_res=0.001)
+    f_full = idealchans_index(fmin, fmax, ideal_res=0.001)
 
-    # further chunk if needed to save memory
     for i in range(0, len(coarse), coarse_chunk_size):
         c_chunk = coarse[i:i+coarse_chunk_size]
-        R_chunk = response_mtx(c_chunk, f, U)
-        cp.save(f'R_chunk{i}.npy', R_chunk)
-        cp.save(f'c_chunk{i}.npy', c_chunk)
-        cp.save(f'f_chunk{i}.npy', f)
+        for j in range(0, len(f_full), fine_chunk_size):
+            f_chunk = f_full[j:j+fine_chunk_size]
+            R_chunk = response_mtx(c_chunk, f_chunk, U)
+            cp.save(f'R_c{i}_f{j}.npy', R_chunk)
+            cp.save(f'c_c{i}_f{j}.npy', c_chunk)
+            cp.save(f'f_c{i}_f{j}.npy', f_chunk)
 
+            
 # def run_parallel_mpi(fmin, fmax, U, coarse_chunk_size=128):
 #     comm = MPI.COMM_WORLD
 #     rank = comm.Get_rank()
