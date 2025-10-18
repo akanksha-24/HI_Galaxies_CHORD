@@ -10,9 +10,10 @@ def chord_bandwidth(range=[300,1500], nchans=8192, sampling_rate=0.417):
 
 def coarsechans_index(fmin, fmax, range=[300,1500], nchans=8192, sampling_rate=0.417):
     bw = chord_bandwidth(range=range, nchans=nchans, sampling_rate=sampling_rate)
-    max_index = cp.floor((fmax - range[0]) / bw)
-    min_index = cp.ceil((fmin - range[0]) / bw)
-    return cp.arange(min_index, max_index+1)
+    max_index = float(cp.floor((fmax - range[0]) / bw))
+    min_index = float(cp.ceil((fmin - range[0]) / bw))
+    return cp.arange(min_index, max_index + 1)
+
 
 def idealchans_index(fmin, fmax, ideal_res, range=[300,1500], nchans=8192, sampling_rate=0.417):
     f_ideal = cp.linspace(fmin, fmax, (fmax-fmin)/ideal_res)
