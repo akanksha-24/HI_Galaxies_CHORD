@@ -111,7 +111,7 @@ def response_mtx(c, f, U, taps=4, N=8192*2):
 
 # ------------------ Serial Execution ------------------ #
 
-def run_serial(fmin, fmax, U, coarse_chunk_size=64, fine_chunk_size=1000):
+def run_serial(fmin, fmax, U, coarse_chunk_size=32, fine_chunk_size=1000):
     coarse = coarsechans_index(fmin=fmin, fmax=fmax)
     f_full = idealchans_index(fmin, fmax, ideal_res=0.01)
 
