@@ -1,7 +1,7 @@
 import cupy as cp
 import sys
 import time
-from mpi4py import MPI
+#from mpi4py import MPI
 
 # ------------------ Frequency Utilities ------------------ #
 
@@ -107,27 +107,27 @@ def run_serial(fmin, fmax, U, coarse_chunk_size=128):
         cp.save(f'c_chunk{i}.npy', c_chunk)
         cp.save(f'f_chunk{i}.npy', f)
 
-def run_parallel_mpi(fmin, fmax, U, coarse_chunk_size=128):
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    size = comm.Get_size()
+# def run_parallel_mpi(fmin, fmax, U, coarse_chunk_size=128):
+#     comm = MPI.COMM_WORLD
+#     rank = comm.Get_rank()
+#     size = comm.Get_size()
 
-    coarse = coarsechans_index(fmin=fmin, fmax=fmax)
-    f = idealchans_index(fmin, fmax, ideal_res=0.001)
+#     coarse = coarsechans_index(fmin=fmin, fmax=fmax)
+#     f = idealchans_index(fmin, fmax, ideal_res=0.001)
 
-    # split coarse channels across ranks
-    coarse_per_rank = len(coarse) // size
-    start = rank * coarse_per_rank
-    end = (rank+1) * coarse_per_rank if rank != size-1 else len(coarse)
-    coarse_chunk = coarse[start:end]
+#     # split coarse channels across ranks
+#     coarse_per_rank = len(coarse) // size
+#     start = rank * coarse_per_rank
+#     end = (rank+1) * coarse_per_rank if rank != size-1 else len(coarse)
+#     coarse_chunk = coarse[start:end]
 
-    # further chunk if needed to save memory
-    for i in range(0, len(coarse_chunk), coarse_chunk_size):
-        c_subchunk = coarse_chunk[i:i+coarse_chunk_size]
-        R_chunk = response_mtx(c_subchunk, f, U)
-        cp.save(f'R_rank{rank}_chunk{i}.npy', R_chunk)
-        cp.save(f'c_rank{rank}_chunk{i}.npy', c_subchunk)
-        cp.save(f'f_rank{rank}_chunk{i}.npy', f)
+#     # further chunk if needed to save memory
+#     for i in range(0, len(coarse_chunk), coarse_chunk_size):
+#         c_subchunk = coarse_chunk[i:i+coarse_chunk_size]
+#         R_chunk = response_mtx(c_subchunk, f, U)
+#         cp.save(f'R_rank{rank}_chunk{i}.npy', R_chunk)
+#         cp.save(f'c_rank{rank}_chunk{i}.npy', c_subchunk)
+#         cp.save(f'f_rank{rank}_chunk{i}.npy', f)
 
 # ------------------ Main ------------------ #
 
