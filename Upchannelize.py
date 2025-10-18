@@ -86,7 +86,7 @@ def response_mtx(c, f, U, taps=4, N=8192*2, dtype=cp.float32):
 
 # ------------------ MPI Parallel Execution ------------------ #
 
-def run(fmin, fmax, U, coarse_chunk_size=128):
+def run(fmin, fmax, U):
     coarse = coarsechans_index(fmin=fmin, fmax=fmax)
     f = idealchans_index(fmin, fmax, ideal_res=0.001)
     R = response_mtx(coarse, f, U)
@@ -95,7 +95,7 @@ def run(fmin, fmax, U, coarse_chunk_size=128):
     cp.save(f'c_{fmin}_{fmax}_{U}.npy', coarse)
     cp.save(f'f_{fmin}_{fmax}_{U}.npy', f)
 
-def run_serial(fmin, fmax, U, coarse_chunk_size=128):
+def run_serial(fmin, fmax, U, coarse_chunk_size=32):
     coarse = coarsechans_index(fmin=fmin, fmax=fmax)
     f = idealchans_index(fmin, fmax, ideal_res=0.001)
 
