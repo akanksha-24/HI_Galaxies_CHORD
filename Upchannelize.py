@@ -99,9 +99,9 @@ def response_mtx(c, f, U, taps=4, N=8192*2, dtype=cp.float32):
 #     cp.save(f'c_{fmin}_{fmax}_{U}.npy', coarse)
 #     cp.save(f'f_{fmin}_{fmax}_{U}.npy', f)
 
-def run_serial(fmin, fmax, U, coarse_chunk_size=64, fine_chunk_size=1000, outdir='/scratch/akanksha/upchan/'):
+def run_serial(fmin, fmax, U, coarse_chunk_size=64, fine_chunk_size=1000, outdir='/scratch/akanksha/upchan/', res=0.029):
     coarse = coarsechans_index(fmin=fmin, fmax=fmax)
-    f_full = idealchans_index(fmin, fmax, ideal_res=0.01)
+    f_full = idealchans_index(fmin, fmax, ideal_res=res)
 
     for i in range(0, len(coarse), coarse_chunk_size):
         c_chunk = coarse[i:i+coarse_chunk_size]
@@ -197,7 +197,7 @@ if __name__ == "__main__":
     fmax = float(sys.argv[2])
     U = int(sys.argv[3])
 
-    run_serial(fmin, fmax, U, outdir=f'/scratch/akanksha/upchan/{int(fmin)}_{int(fmax)}_U{U}')
+    run_serial(fmin, fmax, U, outdir=f'/scratch/akanksha/upchan/{int(fmin)}_{int(fmax)}_U{U}', )
 
     t2 = time.time()
     print(f"Finished. Total Runtime {t2 - t1:.2f} seconds")
