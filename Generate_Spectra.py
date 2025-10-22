@@ -2,9 +2,7 @@ import matplotlib.pyplot as plt
 import astropy.units as u
 import astropy.constants as c
 import numpy as np
-from numpy import diff
 from random import choices
-from scipy import special
 from scipy.interpolate import UnivariateSpline
 from scipy.signal import fftconvolve
 import time
@@ -12,7 +10,6 @@ from mpi4py import MPI
 import numba as nb
 from math import erf
 import Galaxy_Functions as gf
-from scipy.interpolate import PchipInterpolator
 #import cupy as cp
 
 # for parallelization 
@@ -67,10 +64,6 @@ def get_MHI(V, S, D):
     int_S = integrate_profile(V, S)
     return 2.356e5 * (D**2) * int_S
 
-def get_MHI_Hz(f, S, D):
-    dfdv = gf.df_dv()
-    int_S = integrate_profile(f, S)
-    return 2.356e5 * (D**2) * int_S
 
 def find_FWHM(x, y, level=0.5):
     spline = UnivariateSpline(x, y - (np.max(y)*level), s=0)

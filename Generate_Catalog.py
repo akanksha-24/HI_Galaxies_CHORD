@@ -209,7 +209,7 @@ def LoadALFALFA(alftable, flsave):
     np.save(flsave, samples)
 
 if __name__ == "__main__":
-    Gen_Catalog(zmax=0.5, Dmax=200, npt=100, dec1=20, dec2=80, Fluxlim=False, flname='catalogs_output/VolLim_20to60deg_Dmax200')
+    Gen_Catalog(zmax=0.5, Dmax=500, npt=1000, dec1=20, dec2=80, Fluxlim=False, flname='catalogs_output/VolLim_20to60deg_Dmax500')
 
 
     
