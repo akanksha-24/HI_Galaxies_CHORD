@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import Galaxy_Functions as gf
 import astropy.units as u
 import astropy.constants as c
+from matplotlib.backends.backend_pdf import PdfPages
 
 def param_distributions(catalog, n_bins=20, flname=''):
     catalog = np.load(catalog)
@@ -82,6 +83,41 @@ def dndz(catalog=None, N=None, z=None, flname='', compareHans=''):
         plt.legend()
         plt.savefig(flname)
         plt.show()
+
+def check_Spectra(MHI_true, MHI_gen, W50, V_kms, S_Jy, freq_MHz, z, D, fname, size=None, FWHM_thermal=10):
+    with PdfPages(fname) as pdf_:
+        S_mJy = S_Jy * 1000
+        mask = W50 < FWHM_thermal
+        W50[mask] = np.sqrt(W50[mask]**2 + FWHM_thermal**2)
+        f50 = W50 * gf.df_dv(W50, z)
+        fobs = gf.get_fobs(z)
+        if size is None: size = len(MHI_true)
+
+        for i in range(size):
+            plt.close('all')
+            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=[4,6], dpi=250)
+
+            # Velocity axis spectra plot
+            ax1.plot(V_kms[i], S_mJy[i])
+            ax1.set_title(f'log(MHI)={np.log10(MHI_true[i]):.2f}, log(MHI_spec)={np.log10(MHI_gen[i]):.2f}, z={z[i]:.2f}, D={D[i]:.0f} Mpc', fontsize=9)
+            ax1.text(0.01, 0.8, f"W50={W50[i]:.0f} km/s", transform=ax1.transAxes)
+            ax1.set_xlabel('Velocity (km/s)')
+            ax1.set_ylabel('Flux Density (mJy)')
+            ax1.axvline(W50[i]/2, linestyle='--', linewidth=0.7, color='black')
+            ax1.axvline(-W50[i]/2, linestyle='--', linewidth=0.7, color='black')
+
+            # Frequency axis spectra plot
+            ax2.plot(freq_MHz[i], S_mJy[i])
+            ax2.text(0.01, 0.8, f"fobs={fobs[i]:.0f} MHz", transform=ax2.transAxes)
+            ax2.set_xlabel('Frequency (MHz)')
+            ax2.set_ylabel('Flux Density (mJy)')
+            ax2.axvline(fobs[i]+f50[i]/2, linestyle='--', linewidth=0.7, color='black')
+            ax2.axvline(fobs[i]-f50[i]/2, linestyle='--', linewidth=0.7, color='black')
+            ax2.axvline(fobs[i], linestyle='--', linewidth=0.7, color='blue')
+
+            plt.tight_layout()
+            pdf_.savefig(fig)
+            plt.close(fig)
 
 # def Forecast_counts(MHI_lg, mask):
 #     catalog = np.load(catalog)

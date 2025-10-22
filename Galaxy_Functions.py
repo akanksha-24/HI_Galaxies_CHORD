@@ -33,9 +33,9 @@ def comoving_volume(zmax, npt=20000, solidang=4*np.pi, cosmo=cosmo_P2018):
 
     # find mid-points
     z = mid_bin(z_arr)
-    D = cosmo.comoving_distance(z).to(u.Mpc)
+    D = cosmo.comoving_distance(z).to_value(u.Mpc)
     H = cosmo.H(z).value  # km/s/Mpc
-    c_kms = c.c.to_value(u.km/u.s)  
+    c_kms = c.c.to_value(u.km/u.s)
     
     # Volume shells:
     dV_dz = solidang * (D**2) * (c_kms / H)
@@ -43,6 +43,9 @@ def comoving_volume(zmax, npt=20000, solidang=4*np.pi, cosmo=cosmo_P2018):
     # Cumulative volume:
     V=np.cumsum(dV)
     return z, D, V, dV
+
+def freq_fromz(z, f0=1420*u.MHz):
+    return f0 / (1+z)
 
 def Comoving_Dist(z, cosmo=cosmo_P2018):
     return cosmo.comoving_distance(z).to(u.Mpc)
@@ -135,6 +138,37 @@ def estimate_W50(Vrot, i, broaden=True, thermal_FWHM=10, dtype=np.float32):
     if broaden==True: 
         W50 = np.sqrt(W50**2 + thermal_FWHM**2) # 10 u.km/u.s
     return W50
+
+########################## Unit conversions ############################
+
+def get_fobs(z, f_rest=1420.40575177):
+    return f_rest / (1 + z)
+
+def convert_f(v, z, f_rest=1420.40575177):
+    '''Convert velocities in km/s to observed frequencies in MHz'''
+    v_c = c.c.to(u.km/u.s).value 
+    f_obs = get_fobs(z, f_rest=f_rest)
+    freqs = f_obs*np.sqrt((1 - v/v_c) / (1 + v/v_c))
+    return freqs
+
+def df_dv(v, z, f_rest=1420.40575177):
+    '''frequency/velocity Jacobian |df/dv| (absolute) for converting velocity widths and spectral integrations'''
+    v_c = c.c.to(u.km/u.s).value 
+    f_obs = get_fobs(z, f_rest=f_rest) # In MHz
+    df_dv = f_obs / (v_c * (1 + v/v_c) * np.sqrt(1 - (v/v_c)**2))
+    return df_dv # In units MHz / (km/s)
+
+#def W502F50(W50, z, )
+
+def convert_T(obs_freq, S, b_max=22*8.5):
+    '''Convert spectral flux densitities in mJy to temperatures in K'''
+    v_c = (c.c.to(u.km/u.s))
+    f = (obs_freq*u.MHz).to(1/u.s)
+    wavelength = (v_c/f).to(u.m)
+    ang_res = (wavelength) / (b_max*u.m)
+    T = (S*u.mJy * wavelength**2 / (2*c.k_B*ang_res**2)).to(u.K) 
+    
+    return T.value
 
 
 

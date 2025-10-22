@@ -8,6 +8,7 @@ import Plotting as plot
 from mpi4py import MPI
 import glob
 import os
+import re
 
 def sample_HIMF(N, M_HI, phi_s=gf.phi_s, M_s=gf.M_s, alpha=gf.alpha): 
     # Compute Schechter PDF in log-space
@@ -55,7 +56,7 @@ def sample_in_shell(V1, V2, N, solidang, dtype=np.float32):
     u = np.random.random(N).astype(dtype)
     V = V1 + u*(V2-V1)
     D = (3*V/solidang)**(1/3)
-    return D.value, V.value
+    return D, V
 
 def Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, V1, V2, zinterp, solidang,  dtype=np.float32):
     MHI_sample = sample_HIMF(N, MHI).astype(dtype) # draw from HIMF
@@ -131,7 +132,7 @@ def Gen_Catalog(zmax, npt, dec1, dec2, ra1=0, ra2=360, MHImin=5, MHImax=12,
             MHI = np.logspace(MHImin_i, MHImax, MHIres)
             n = gf.galaxy_density(MHI)
 
-        N = n * dV[i].value
+        N = n * dV[i]
         N = 0 if np.isinf(N) else int(N)
         local_Narr.append(N)
 
@@ -159,34 +160,33 @@ def Gen_Catalog(zmax, npt, dec1, dec2, ra1=0, ra2=360, MHImin=5, MHImax=12,
         return None, None
     
 def merge_rankfiles(flname, delete_rank_files=True, dtype=np.float32):
-    outname=f"{flname}_merged.npy"
-    files = sorted(glob.glob(f"{flname}_*"))
+    files = glob.glob(f"{flname}_*")
     if not files:
         raise FileNotFoundError(f"No files found matching {flname}_*")
     
-    total_rows = 0
-    ncols = None
+    def extract_rank(filename):
+        # Extracts the integer after the last underscore in the filename
+        match = re.search(r"_(\d+)\.npy$", os.path.basename(filename))
+        return int(match.group(1)) if match else -1
+
+    files.sort(key=extract_rank)
+
+    arrays = []
     for f in files:
-        data = np.load(f, mmap_mode='r')
-        total_rows += data.shape[0]
-        ncols = data.shape[1] if ncols is None else ncols
+        arr = np.load(f, mmap_mode='r')
+        arrays.append(arr)
 
-    # Create a memmap file to store all data
-    merged = np.lib.format.open_memmap(outname, mode='w+', dtype=dtype, shape=(total_rows, ncols))
+    merged = np.concatenate(arrays, axis=0).astype(dtype, copy=False)
 
-    start = 0
-    for f in files:
-        data = np.load(f)
-        nrows = data.shape[0]
-        merged[start:start+nrows, :] = data
-        start += nrows
-
-    print(f"Merged {len(files)} files into {outname} ({total_rows} rows, {ncols} columns)")
-
+    outname = f"{flname}_merged.npy"
+    np.save(outname, merged)
+    
     if delete_rank_files:
         for f in files:
             os.remove(f)
-        print(f"Deleted {len(files)} original rank files.")
+
+    print(f"Merged {len(files)} rank files → {outname} (shape={merged.shape})")
+    return merged
 
 
 def LoadALFALFA(alftable, flsave):
@@ -208,7 +208,11 @@ def LoadALFALFA(alftable, flsave):
     samples = np.column_stack([10**lg_MHI, Vhelio, SNR, W50, RA, Dec, Dist, S21])
     np.save(flsave, samples)
 
+if __name__ == "__main__":
+    Gen_Catalog(zmax=0.5, Dmax=200, npt=100, dec1=20, dec2=80, Fluxlim=False, flname='catalogs_output/VolLim_20to60deg_Dmax200')
 
+
+    
 
 
 
