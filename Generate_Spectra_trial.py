@@ -7,10 +7,10 @@ import astropy.units as u
 import astropy.constants as c
 import cupy as cp
 
-# MPI
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size_mpi = comm.Get_size()
+# # MPI
+# comm = MPI.COMM_WORLD
+# rank = comm.Get_rank()
+# size_mpi = comm.Get_size()
 
 @cp.fuse()
 def erf_fast(x):
