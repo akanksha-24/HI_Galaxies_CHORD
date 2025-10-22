@@ -213,9 +213,7 @@ def Run_Spectra(catalog_fl, zmax, size=None, plot=False, gpu=False, fmax=1421, f
     MHI = local_cat[:,0]
     W50 = local_cat[:,3]
     D = local_cat[:,6]
-    print(D)
     z = local_cat[:,8]
-    print(z)
 
     print(f"Generatiing Spectra [Rank {rank}]")
     t1 = time.time()
@@ -243,5 +241,5 @@ def Run_Spectra(catalog_fl, zmax, size=None, plot=False, gpu=False, fmax=1421, f
 
 
 if __name__ == "__main__":
-    Run_Spectra(catalog_fl='/scratch/akanksha/catalogs/VolLim_20to60deg_z0p5_merged.npy', zmax=0.5, size=50, plot=True)
+    Run_Spectra(catalog_fl='/scratch/akanksha/catalogs/VolLim_20to60deg_z0p5_merged.npy', zmax=0.5, plot=False)
 
