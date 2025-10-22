@@ -167,9 +167,10 @@ def Generate_Spectra_GPU(size, MHI, W50, D_C, z, a=1.0, w=1.0, chunk_size=100, d
 # -----------------------------------------------------------------------------
 # High-level wrapper that each MPI rank calls (similar to your Run_Spectra)
 # -----------------------------------------------------------------------------
-def Run_Spectra_GPU(catalog_fl, dtype=cp.float32, plot=False):
+def Run_Spectra_GPU(catalog_fl, dtype=cp.float32, plot=False, size=None):
     catalog = cp.load(catalog_fl)
-    size = catalog.shape[0]
+    if size is None:
+        size = catalog.shape[0]
 
     # Split work across MPI ranks
     chunk_size = size // size_mpi
