@@ -234,5 +234,5 @@ def Run_Spectra(catalog_fl, zmax, size=None, plot=False, gpu=False, fmax=1421, f
 
 
 if __name__ == "__main__":
-    Run_Spectra(catalog_fl='/scratch/akanksha/catalogs/VolLim_20to60deg_z0p5_merged.npy', zmax=0.5, plot=False)
+    Run_Spectra(catalog_fl='../catalogs_output/VolLim_20to60deg_Dmax500.npy', zmax=0.117, plot=False)
 
