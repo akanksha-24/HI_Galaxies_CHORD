@@ -202,7 +202,7 @@ def interpolate_faxis(f_arr, Sarr, f_full, fres=0.001):
 def Run_Spectra(catalog_fl, zmax, size=None, plot=False, gpu=False, fmax=1421, fres=0.001, dtype=np.float32, interpolate=True):
     catalog = np.load(catalog_fl)
     if size==None:
-        size = catalog.shape[0]
+        size = catalog[0].shape[0]
 
     # Split work across MPI ranks
     chunk_size = size // size_mpi
@@ -213,7 +213,9 @@ def Run_Spectra(catalog_fl, zmax, size=None, plot=False, gpu=False, fmax=1421, f
     MHI = local_cat[:,0]
     W50 = local_cat[:,3]
     D = local_cat[:,6]
+    print(D)
     z = local_cat[:,8]
+    print(z)
 
     print(f"Generatiing Spectra [Rank {rank}]")
     t1 = time.time()
