@@ -212,7 +212,7 @@ def Run_Spectra(catalog_fl, zmax, size=None, plot=False, gpu=False, fmax=1421, f
     print(f"Generatiing Spectra [Rank {rank}]")
     t1 = time.time()
 
-    final_M, Vel, S_flux, freq = Generate_Spectra(size, MHI, W50, D, z, dtype=dtype)
+    final_M, Vel, S_flux, freq = Generate_Spectra(local_cat.shape[0], MHI, W50, D, z, dtype=dtype)
     np.save(f"spectra_rank{rank}.npy", np.asarray([Vel, freq, S_flux], dtype=dtype))
     np.save(f"intMHI_rank{rank}.npy", np.asarray([final_M], dtype=dtype))
     t2 = time.time()
