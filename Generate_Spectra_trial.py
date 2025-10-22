@@ -12,8 +12,25 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size_mpi = comm.Get_size()
 
+@cp.fuse()
+def erf_fast(x):
+    """Fast approximate erf(x), max error ~1e-4."""
+    # constants
+    a1 = 0.254829592
+    a2 = -0.284496736
+    a3 = 1.421413741
+    a4 = -1.453152027
+    a5 = 1.061405429
+    p  = 0.3275911
 
-def Busy_general_batch_cupy(x, a, b1, b2, xe, xp, c, w):
+    sign = cp.sign(x)
+    x = cp.abs(x)
+    t = 1.0 / (1.0 + p * x)
+
+    y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * cp.exp(-x * x)
+    return sign * y
+
+def Busy_general_batch_cupy(x, a, b1, b2, xe, xp, c, w, fast=True):
     """
     GPU vectorized Busy function.
     Inputs:
@@ -25,15 +42,19 @@ def Busy_general_batch_cupy(x, a, b1, b2, xe, xp, c, w):
     """
     # Broadcast shapes: (n_p, 1) * (1, n_x) -> (n_p, n_x)
     # err_p = erf(b1*(w + x - xe)) + 1.0
-    err_p = special.erf(b1[:, None] * (w + x[None, :] - xe[:, None])) + 1.0
-    err_m = special.erf(b2[:, None] * (w - x[None, :] + xe[:, None])) + 1.0
+    if fast:
+        err_p = erf_fast(b1[:, None] * (w + x[None, :] - xe[:, None])) + 1.0
+        err_m = erf_fast(b2[:, None] * (w - x[None, :] + xe[:, None])) + 1.0
+    else:
+        err_p = special.erf(b1[:, None] * (w + x[None, :] - xe[:, None])) + 1.0
+        err_m = special.erf(b2[:, None] * (w - x[None, :] + xe[:, None])) + 1.0
     pbola = c[:, None] * ((x[None, :] - xp[:, None])**2) + 1.0
 
     B = (a / 4.0) * err_p * err_m * pbola
     return B.astype(cp.float32)
 
 def integrate_profile(X, Y):
-    return cp.trapz(Y, x=X)
+    return cp.trapz(Y, x=X, axis=1)
 
 def get_MHI(V, S, D):
     int_S = integrate_profile(V, S)
@@ -45,7 +66,7 @@ def get_fobs(z, f_rest=1420.40575177):
 def convert_f(v, z, f_rest=1420.40575177):
     '''Convert velocities in km/s to observed frequencies in MHz'''
     v_c = c.c.to(u.km/u.s).value 
-    f_obs = get_fobs(z, f_rest=f_rest)
+    f_obs = cp.asarray(get_fobs(z, f_rest=f_rest))[:,None] # handles array broadcasting
     freqs = f_obs*cp.sqrt((1 - v/v_c) / (1 + v/v_c))
     return freqs
 
@@ -59,16 +80,18 @@ def assign_units(x, B, W50, D, z, MHI_desired, FWHM_thermal=10):
     FWHM = find_FWHM(x, B)
 
     mask = W50 < FWHM_thermal
-    W50[mask] = cp.sqrt(FWHM_thermal**2 + W50[mask]**2)
+    W50 = W50.copy()  # avoid modifying array
+    if mask.any():
+        W50[mask] = cp.sqrt(FWHM_thermal**2 + W50[mask]**2)
 
     scale = W50 / FWHM
-    V = x * scale
+    V = scale[:, None] * x[None, :] 
     f = convert_f(V, z) # convert to frequency axis -> Note: df will not be constant
 
     # Scale y-axis
     MHI_initial = get_MHI(V, S_norm, D)
     y_scale = MHI_desired / MHI_initial
-    S = S_norm * y_scale
+    S = S_norm * y_scale[:, None] 
     return V, f, S
 
 # def convolve_profile_gpu(S_gpu, V_gpu, FWHM_thermal=10.0):
@@ -91,32 +114,25 @@ def assign_units(x, B, W50, D, z, MHI_desired, FWHM_thermal=10):
 #         conv = cp.convolve(S_gpu, G, mode='same')
 #     return conv
 
-def Generate_Spectra_GPU(size, MHI, W50, D_C, z, a=1.0, w=1.0,
-                         b1=None, b2=None, c=None, xe=None, xp=None,
-                         chunk_size=None, dtype=cp.float32):
+def Generate_Spectra_GPU(size, MHI, W50, D_C, z, a=1.0, w=1.0, chunk_size=100, dtype=cp.float32):
     print(f"[Rank {rank}] Generating Spectra (size={size}) on GPU...")
     t0 = time.time()
 
+    # Get luminosity distance D_L from co-mocing distance D_C:
+    D_L = (1+z)*D_C
+
     # default random params
-    if b1 is None: b1 = cp.random.uniform(1, 3, size=size).astype(dtype)
-    if b2 is None: b2 = cp.random.uniform(1, 3, size=size).astype(dtype)
-    if c  is None: c  = cp.random.uniform(0, 1, size=size).astype(dtype)
-    if xe is None: xe = cp.random.uniform(-0.5, 0.5, size=size).astype(dtype)
-    if xp is None: xp = cp.random.uniform(-0.5, 0.5, size=size).astype(dtype)
+    b1 = cp.random.uniform(1, 3, size=size).astype(dtype)
+    b2 = cp.random.uniform(1, 3, size=size).astype(dtype)
+    c  = cp.random.uniform(0, 1, size=size).astype(dtype)
+    xe = cp.random.uniform(-0.5, 0.5, size=size).astype(dtype)
+    xp = cp.random.uniform(-0.5, 0.5, size=size).astype(dtype)
 
     # grid x (same as your code)
     N = 100000
     x = cp.linspace(-5, 5, N).astype(dtype)
 
-    # Get luminosity distance D_L from co-mocing distance D_C:
-    D_L = (1+z)*D_C
-
     for chunk_idx, start_idx in enumerate(range(0, size, chunk_size)):
-        final_M = cp.empty(chunk_size, dtype=dtype)
-        Vel = cp.empty((chunk_size, N), dtype=dtype)
-        S_flux = cp.empty((chunk_size, N), dtype=dtype)
-        freq = cp.empty((chunk_size, N), dtype=dtype)
-
         end_idx = min(start_idx + chunk_size, size)
 
         # slice host arrays
@@ -135,21 +151,23 @@ def Generate_Spectra_GPU(size, MHI, W50, D_C, z, a=1.0, w=1.0,
         # B_chunk is (n_chunk, n_x) on GPU (float32)
 
         # Assign units & scaling on GPU
-        Vel[chunk_idx], freq[chunk_idx], S_flux[chunk_idx] = assign_units(x, B_chunk,
+        V_chunk, f_chunk, S_chunk = assign_units(x, B_chunk,
                                                       W50_chunk, D_chunk, MHI_chunk)
 
-        cp.save(f"spectra_gpu_rank{rank}_chunk{chunk_idx}.npy", cp.asarray([Vel, freq, S_flux], dtype=object))
+        cp.save(f"V_gpu_rank{rank}_chunk{chunk_idx}.npy", V_chunk)
+        cp.save(f"f_gpu_rank{rank}_chunk{chunk_idx}.npy", f_chunk)
+        cp.save(f"S_gpu_rank{rank}_chunk{chunk_idx}.npy", S_chunk)
 
         t1 = time.time()
         print(f"[Chunk {chunk_idx}] Finished in {t1 - t0:.2f} sec "
             f"for {size} spectra")
-    return Vel, freq, S_flux
+    return V_chunk, f_chunk, S_chunk
 
 
 # -----------------------------------------------------------------------------
 # High-level wrapper that each MPI rank calls (similar to your Run_Spectra)
 # -----------------------------------------------------------------------------
-def Run_Spectra_GPU(catalog_fl, dtype=cp.float32):
+def Run_Spectra_GPU(catalog_fl, dtype=cp.float32, plot=False):
     catalog = cp.load(catalog_fl)
     size = catalog.shape[0]
 
@@ -162,22 +180,23 @@ def Run_Spectra_GPU(catalog_fl, dtype=cp.float32):
     # adapt column indices per your catalogue format
     MHI = local_cat[:,0].astype(dtype)
     W50 = local_cat[:,3].astype(dtype)
-    D   = local_cat[:,6].astype(dtype)
+    D_C   = local_cat[:,6].astype(dtype)
     z = local_cat[:,8].astype(dtype)
 
     print(f"[Rank {rank}] Generatiing Spectra (local size={size})")
     t1 = time.time()
 
-    Vel, freq, S_flux = Generate_Spectra_GPU(len(MHI), MHI, W50, D)
+    Vel, freq, S_flux = Generate_Spectra_GPU(local_cat.shape[0], MHI, W50, D_C, z)
 
     if plot:
         print("Plotting...")
         import Plotting as plot
-        plot.check_Spectra(MHI, MHI, W50, Vel, S_flux, freq, z, D, "Plots/Test_spectra_GPU.pdf")
+        plot.check_Spectra(cp.asnumpy(MHI), cp.asnumpy(MHI), cp.asnumpy(W50), cp.asnumpy(Vel), 
+                           cp.asnumpy(S_flux), cp.asnumpy(freq), cp.asnumpy(z), cp.asnumpy(D), "Plots/Test_spectra_GPU.pdf")
 
     t2 = time.time()
     print(f"[Rank {rank}] Done and saved — took {t2 - t1:.2f} seconds.")
 
 
 if __name__ == "__main__":
-    Run_Spectra_GPU(catalog_fl='../catalogs_output/VolLim_20to60deg_Dmax500.npy', size=20, plot=True)
+    Run_Spectra_GPU(catalog_fl='../catalogs_output/VolLim_20to60deg_Dmax500.npy', plot=True)
