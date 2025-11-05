@@ -185,7 +185,7 @@ def merge_rankfiles(flname, delete_rank_files=True, dtype=np.float32):
         arr = np.load(f, mmap_mode='r')
         arrays.append(arr)
 
-    merged = np.concatenate(arrays, axis=0).astype(dtype, copy=False)
+    merged = np.concatenate(arrays, axis=1).astype(dtype, copy=False)
 
     outname = f"{flname}_merged.npy"
     np.save(outname, merged)
