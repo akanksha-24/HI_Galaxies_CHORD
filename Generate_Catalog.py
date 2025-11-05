@@ -10,6 +10,7 @@ import glob
 import os
 import re
 import pandas as pd
+import Forecasting as fore
 
 def sample_HIMF(N, M_HI, phi_s=gf.phi_s, M_s=gf.M_s, alpha=gf.alpha): 
     # Compute Schechter PDF in log-space
@@ -59,7 +60,7 @@ def sample_in_shell(V1, V2, N, solidang, dtype=np.float32):
     D = (3*V/solidang)**(1/3)
     return D, V
 
-def Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, V1, V2, zinterp, solidang,  dtype=np.float32):
+def Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, V1, V2, zinterp, solidang,  dtype=np.float32, SNRint=False, RMS=0.2, sigma=6):
     MHI_sample = sample_HIMF(N, MHI).astype(dtype) # draw from HIMF
     VHI_sample = gf.VHI_polyFit(MHI_sample, dtype=dtype).astype(dtype) # estimate from abundance matching
     cos_i = np.random.random(N).astype(dtype)   # uniform in [0,1]
@@ -69,7 +70,12 @@ def Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, V1, V2, zinterp, solidang,  dtype
     D_sample, Vol_sample = sample_in_shell(V1, V2, N, solidang, dtype=dtype)
     z_sample = zinterp(D_sample)
     #Vol_drawn = np.full(N, V2.value)
-    samples = np.column_stack([MHI_sample, VHI_sample, i_sample, W50_sample, ra_sample, dec_sample, D_sample, Vol_sample, z_sample])
+    if SNRint:
+        mask, _ = fore.SNRint_detections(MHI=MHI_sample, W50=W50_sample, z=z_sample, RMS=RMS, sigma=sigma)
+        samples = np.column_stack([MHI_sample[mask], VHI_sample[mask], i_sample[mask], W50_sample[mask], 
+                                   ra_sample[mask], dec_sample[mask], D_sample[mask], Vol_sample[mask], z_sample[mask]])
+    else:
+        samples = np.column_stack([MHI_sample, VHI_sample, i_sample, W50_sample, ra_sample, dec_sample, D_sample, Vol_sample, z_sample])
     return samples
 
 def Save_Catalog_npz(samples, zmax, solidang, flname, z_arr, N_arr):
@@ -94,7 +100,7 @@ def Gen_Catalog(zmax, npt, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=
                     Dmax=None, footprint=None, Fluxlim=False, sigma=1,
                     noise=1e-4, vel_width=10, MHIres=10000,
                     draw=True, fltype='npy', flname='catalog.npy',
-                    savelarge=True, dtype=np.float32):
+                    savelarge=True, dtype=np.float32, SNRint=False, sigma_int=6, RMS=0.2):
     
     print("starting Job...")
     
@@ -141,9 +147,9 @@ def Gen_Catalog(zmax, npt, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=
 
         if draw:
             if i == 0:
-                samples_ = Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, 0, V[i], z_interp, solidang, dtype=dtype)
+                samples_ = Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, 0, V[i], z_interp, solidang, dtype=dtype, SNRint=SNRint, sigma=sigma_int, RMS=RMS)
             else:
-                samples_ = Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, V[i-1], V[i], z_interp, solidang, dtype=dtype)
+                samples_ = Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, V[i-1], V[i], z_interp, solidang, dtype=dtype, SNRint=SNRint, sigma=sigma_int, RMS=RMS)
             local_samples.append(samples_)
     print("Saving samples...")
     if draw:
@@ -259,10 +265,12 @@ def load_catalogParams(catalog_file):
 
 if __name__ == "__main__":
     #Gen_Catalog(zmax=0.1, npt=1000, dec1=20, dec2=80, Fluxlim=False, flname='catalogs_output/VolLim_20to60deg_zmax0p1')
-    Gen_Catalog(zmin=0.4, zmax=1, npt=10000, dec1=20, dec2=80, Fluxlim=False, flname='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1')
+    #Gen_Catalog(zmin=0.4, zmax=1, npt=10000, dec1=20, dec2=80, Fluxlim=False, SNRint=True, sigma_int=6, RMS=0.2,
+    #            flname='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_sigmaint2')
     # LoadMockALFALFA('../ALFALFA_Mock_Brooks/mock_whole_sky_df', changeVelocity=False, 
     #                 Dist_range=[0,200], Dec_range=[20,80], 
     #                 outfile='catalogs_output/MockAlf_D200_Dec20to80.npy')
+    merge_rankfiles(flname='catalogs_output/VolLim_20to60deg_zmax0p1', delete_rank_files=False)
 
     
 
