@@ -26,15 +26,15 @@ def set_cosmology(h=0.7, om=0.315):
     cosmo = FlatLambdaCDM(H0=H0, Om0=om)
     return cosmo
 
-def comoving_volume(zmax, npt=20000, solidang=4*np.pi, cosmo=cosmo_P2018):
+def comoving_volume(zmax, zmin=0, npt=20000, solidang=4*np.pi, cosmo=cosmo_P2018):
     '''Get comoving volume, dV shell volume and distance from redshift'''
-    z_arr = np.linspace(0.0, zmax, npt)
+    z_arr = np.linspace(zmin, zmax, npt)
     dz = np.diff(z_arr)
 
     # find mid-points
     z = mid_bin(z_arr)
-    D = cosmo.comoving_distance(z).to_value(u.Mpc)
     H = cosmo.H(z).value  # km/s/Mpc
+    D = cosmo.comoving_distance(z).to_value(u.Mpc)
     c_kms = c.c.to_value(u.km/u.s)
     
     # Volume shells:
@@ -50,14 +50,20 @@ def freq_fromz(z, f0=1420*u.MHz):
 def Comoving_Dist(z, cosmo=cosmo_P2018):
     return cosmo.comoving_distance(z).to(u.Mpc)
 
-def build_z_interp(zmax=5.0, npt=10000, cosmo=cosmo_P2018, dtype=np.float32):
+def build_z_interp(zmin=0, zmax=5.0, npt=10000, cosmo=cosmo_P2018, dtype=np.float32):
     """Build fast interp to invert comoving_distance to get redshift z."""
-    z_grid = np.linspace(0.0, zmax, npt, dtype=dtype)
+    z_grid = np.linspace(zmin, zmax, npt, dtype=dtype)
     D = cosmo.comoving_distance(z_grid.astype(np.float64)).to(u.Mpc).value.astype(dtype)
     return interp1d(D, z_grid, kind="linear", bounds_error=False, fill_value=(0.0, zmax))
 
-def VolumeFromDist(D, solidang):
+def VolumeFromDist(D, solidang=4*np.pi):
     return (1/3)*solidang*(D**3)
+
+def Hubble_redshift(D, H0=(67.77*u.km/u.s/u.Mpc).value):
+    '''Use for local universe'''
+    c_kms = c.c.to_value(u.km/u.s)
+    return D*H0/c_kms
+
 
 ############################### RA and Dec Spherical coords #############################
 
@@ -105,19 +111,19 @@ def galaxy_density(MHI=MHI_grid, phi_s=phi_s, M_s=M_s, alpha=alpha):
 ################################   Galaxy Relations   #######################################
 
 def S_toMHI(S_peak, delV, D, unitless=True):
-    '''Approximation of HI mass based on S21 integrated flux without spectra'''
+    '''Approximation of HI mass based on S peak flux without spectra'''
     if unitless:
         return C21.value*S_peak*delV*D**2
     else:
         return ((C21*S_peak*delV*D**2)).to(u.solMass)
 
 def MHI_toS(MHI, delV, D, unitless=True):
-    '''Approximation of S21 flux based on HI mass without spectra'''
+    '''Approximation of S peak flux based on HI mass without spectra'''
     if unitless:
         return MHI/(C21.value*delV*D**2)
     else:
         return ((MHI)/(C21*delV*D**2)).to(u.Jy)
-
+    
 def Vmax_correct(D, S21, S21lim, solidang):
     Dmax = D*np.sqrt(S21/S21lim)
     Vmax = VolumeFromDist(Dmax, solidang)
@@ -138,6 +144,15 @@ def estimate_W50(Vrot, i, broaden=True, thermal_FWHM=10, dtype=np.float32):
     if broaden==True: 
         W50 = np.sqrt(W50**2 + thermal_FWHM**2) # 10 u.km/u.s
     return W50
+
+def SNR_int(z, MHI, DeltaV, chan_width, RMS_chan, cosmo=cosmo_P2018):
+    '''The integrated signal-to-noise from rest-frame velocity widths
+       Using Equation 156 from https://arxiv.org/pdf/1705.04210'''
+    
+    D_L = cosmo.luminosity_distance(z).to_value(u.Mpc)
+    C = 2.92*10**-4
+    return C*(MHI/(RMS_chan*D_L**2))*np.sqrt((1+z)/(chan_width*DeltaV))
+
 
 ########################## Unit conversions ############################
 

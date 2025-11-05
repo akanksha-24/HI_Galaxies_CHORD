@@ -9,6 +9,7 @@ from mpi4py import MPI
 import glob
 import os
 import re
+import pandas as pd
 
 def sample_HIMF(N, M_HI, phi_s=gf.phi_s, M_s=gf.M_s, alpha=gf.alpha): 
     # Compute Schechter PDF in log-space
@@ -89,7 +90,7 @@ def Save_Catalog_npz(samples, zmax, solidang, flname, z_arr, N_arr):
 #         np.save(flname+'_'+extn+'.npy',samples[:,i])
 
 
-def Gen_Catalog(zmax, npt, dec1, dec2, ra1=0, ra2=360, MHImin=5, MHImax=12,
+def Gen_Catalog(zmax, npt, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
                     Dmax=None, footprint=None, Fluxlim=False, sigma=1,
                     noise=1e-4, vel_width=10, MHIres=10000,
                     draw=True, fltype='npy', flname='catalog.npy',
@@ -105,13 +106,13 @@ def Gen_Catalog(zmax, npt, dec1, dec2, ra1=0, ra2=360, MHImin=5, MHImax=12,
     else:
         solidang = footprint.to(u.sr)
     
-    z_interp = gf.build_z_interp(zmax, npt=npt*10, dtype=dtype)
+    z_interp = gf.build_z_interp(zmin, zmax, npt=npt*10, dtype=dtype)
     if Dmax is not None:
         zmax = z_interp(Dmax)
 
     if rank == 0:
         print(f"max redshift is {zmax}")
-    z, D, V, dV = gf.comoving_volume(zmax=zmax, npt=npt, solidang=solidang)
+    z, D, V, dV = gf.comoving_volume(zmin=zmin, zmax=zmax, npt=npt, solidang=solidang)
 
     # Split work among ranks
     all_indices = np.arange(len(dV))
@@ -146,7 +147,7 @@ def Gen_Catalog(zmax, npt, dec1, dec2, ra1=0, ra2=360, MHImin=5, MHImax=12,
     if draw:
         rank_filename = f"{flname}_rank{rank}.npy"
         local_arrays = np.vstack(local_samples) if len(local_samples) > 0 else np.empty((0,9), dtype=dtype)
-        np.save(rank_filename, local_arrays)
+        np.save(rank_filename, local_arrays.T)
 
     all_Narr = comm.gather(local_Narr, root=0)
 
@@ -188,6 +189,39 @@ def merge_rankfiles(flname, delete_rank_files=True, dtype=np.float32):
     print(f"Merged {len(files)} rank files → {outname} (shape={merged.shape})")
     return merged
 
+def LoadMockALFALFA(datafile, outfile, changeVelocity=False, Dist_range=None, RA_range=None, Dec_range=None):
+    fulldata = pd.read_pickle(datafile)
+    D = fulldata['d_mw']
+    ra = fulldata['ra_deg']
+    dec = fulldata['dec_deg']
+
+    # select a portion of the catalog:
+    mask = np.ones(len(fulldata), dtype=bool)
+    if Dist_range is not None:
+        mask &= (D >= Dist_range[0]) & (D <= Dist_range[1])
+    if RA_range is not None:
+        mask &= (ra >= RA_range[0]) & (ra <= RA_range[1])
+    if Dec_range is not None:
+        mask &= (dec >= Dec_range[0]) & (dec <= Dec_range[1])
+    simdata = fulldata[mask].copy()
+
+    M_HI = simdata['mcold_atom']
+    i = simdata['random_incl_rad']
+    if changeVelocity:
+        Vrot = gf.VHI_polyFit(M_HI)
+        W_50 = gf.estimate_W50(Vrot=Vrot, i=i, broaden=False)
+    else:
+        W_50 = simdata['w50']
+        Vrot = W_50 / (2*np.sin(i))
+    D = simdata['d_mw']
+    Vol = gf.VolumeFromDist(D) # full sky volume which can be multiplied by footprint, when selected
+    z = gf.Hubble_redshift(D)
+    ra = simdata['ra_deg']
+    dec = simdata['dec_deg']
+
+    catalog = np.asarray([M_HI, Vrot, i, W_50, ra, dec,  D, Vol,  z])
+    np.save(outfile, catalog)
+
 
 def LoadALFALFA(alftable, flsave):
     alf = pd.read_table(alftable, delimiter=',')
@@ -208,9 +242,25 @@ def LoadALFALFA(alftable, flsave):
     samples = np.column_stack([10**lg_MHI, Vhelio, SNR, W50, RA, Dec, Dist, S21])
     np.save(flsave, samples)
 
-if __name__ == "__main__":
-    Gen_Catalog(zmax=0.5, Dmax=500, npt=1000, dec1=20, dec2=80, Fluxlim=False, flname='catalogs_output/VolLim_20to60deg_Dmax500')
+def load_catalogParams(catalog_file):
+    cat = np.load(catalog_file)
+    MHI = cat[0]
+    Vrot = cat[1]
+    i = cat[2] 
+    W_50 = cat[3] 
+    ra = cat[4] 
+    dec = cat[5]  
+    D = cat[6]
+    Vol = cat[7]  
+    z = cat[8]
+    return MHI, Vrot, i, W_50, ra, dec, D, Vol, z 
 
+if __name__ == "__main__":
+    #Gen_Catalog(zmax=0.1, npt=1000, dec1=20, dec2=80, Fluxlim=False, flname='catalogs_output/VolLim_20to60deg_zmax0p1')
+    Gen_Catalog(zmin=0.4, zmax=1, npt=10000, dec1=20, dec2=80, Fluxlim=False, flname='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1')
+    # LoadMockALFALFA('../ALFALFA_Mock_Brooks/mock_whole_sky_df', changeVelocity=False, 
+    #                 Dist_range=[0,200], Dec_range=[20,80], 
+    #                 outfile='catalogs_output/MockAlf_D200_Dec20to80.npy')
 
     
 
