@@ -5,7 +5,7 @@ import numpy as np
 import time
 import pandas as pd
 import Plotting as plot
-from mpi4py import MPI
+#from mpi4py import MPI
 import glob
 import os
 import re
@@ -96,9 +96,12 @@ def Gen_Catalog(zmax, npt, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=
                     draw=True, fltype='npy', flname='catalog.npy',
                     savelarge=True, dtype=np.float32):
     
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    size = comm.Get_size()
+    print("starting Job...")
+    
+    # comm = MPI.COMM_WORLD
+    # rank = comm.Get_rank()
+    # size = comm.Get_size()
+    rank=0
     start = time.time()
 
     if footprint is None:
@@ -143,19 +146,20 @@ def Gen_Catalog(zmax, npt, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=
             else:
                 samples_ = Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, V[i-1], V[i], z_interp, solidang, dtype=dtype)
             local_samples.append(samples_)
-
+    print("Saving samples...")
     if draw:
         rank_filename = f"{flname}_rank{rank}.npy"
         local_arrays = np.vstack(local_samples) if len(local_samples) > 0 else np.empty((0,9), dtype=dtype)
         np.save(rank_filename, local_arrays.T)
 
-    all_Narr = comm.gather(local_Narr, root=0)
+    #all_Narr = comm.gather(local_Narr, root=0)
 
     end = time.time()
     if rank == 0:
         print(f"[Rank 0] Total runtime: {end - start:.2f} sec")
 
-        N_arr = np.concatenate(all_Narr)
+        #N_arr = np.concatenate(all_Narr)
+        N_arr = np.concatenate(local_Narr)
         return N_arr, z
     else:
         return None, None
