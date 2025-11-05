@@ -5,7 +5,7 @@ import numpy as np
 import time
 import pandas as pd
 import Plotting as plot
-from mpi4py import MPI
+#from mpi4py import MPI
 import glob
 import os
 import re
