@@ -270,7 +270,7 @@ if __name__ == "__main__":
     # LoadMockALFALFA('../ALFALFA_Mock_Brooks/mock_whole_sky_df', changeVelocity=False, 
     #                 Dist_range=[0,200], Dec_range=[20,80], 
     #                 outfile='catalogs_output/MockAlf_D200_Dec20to80.npy')
-    merge_rankfiles(flname='catalogs_output/VolLim_20to60deg_zmax0p1', delete_rank_files=False)
+    merge_rankfiles(flname='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1', delete_rank_files=False)
 
     
 
