@@ -22,23 +22,81 @@ def SNRint_fromFile(catalog_file, RMS, sigma=6, plt=True, figname='', title=''):
         plot.Detection_counts_MHI(MHI, mask, RMS, figname=figname, title=title)
     return MHI, W50_broad, Dec, mask 
 
-def SNRint_varyingRMS(catalog_file, RMS=[1, 0.5, 0.1], sigma=6, plot=True, figname='', title=''):
-    MHI, _, _, W50, _, _, _, _, z = gen.load_catalogParams(catalog_file)
-    mask = np.ones((MHI.shape[0]), dtype=bool)
-    base, ext = os.path.splitext(catalog_file)
-    plt.figure()
-    for i in range(len(RMS)):
-        mask, _ = SNRint_detections(MHI, W50, z, RMS=RMS[i], sigma=sigma)
-        np.save(base+f'_mask{RMS[i]}.npy', mask)
-        counts = MHI[mask].shape[0]
-        print("counts is ", counts)
-        plt.hist(np.log10(MHI[mask]), bins=30, histtype='step', label=f'RMS={RMS[i]} mJy, total={counts}')
-    plt.yscale('log')
-    plt.title(title)
-    plt.xlabel('log(MHI)')
-    plt.ylabel('log(Counts)')
-    plt.legend()
-    plt.savefig(figname)
+# def SNRint_varyingRMS(catalog_file, RMS, sigma=6, plot=True, figname='', title=''):
+#     from mpi4py import MPI
+#     comm = MPI.COMM_WORLD
+#     rank = comm.Get_rank()
+#     size = comm.Get_size()
+
+#     MHI, _, _, W50, _, _, _, _, z = gen.load_catalogParams(catalog_file)
+#     base, ext = os.path.splitext(catalog_file)
+#     mask, _ = SNRint_detections(MHI, W50, z, RMS=RMS, sigma=sigma)
+
+#     plt.figure()
+#     for i in range(len(RMS)):
+        
+#         np.save(base+f'_mask{RMS[i]}.npy', mask)
+#         counts = MHI[mask].shape[0]
+#         print("counts is ", counts)
+#         plt.hist(np.log10(MHI[mask]), bins=30, histtype='step', label=f'RMS={RMS[i]} mJy, total={counts}')
+#     plt.yscale('log')
+#     plt.title(title)
+#     plt.xlabel('log(MHI)')
+#     plt.ylabel('log(Counts)')
+#     plt.legend()
+#     plt.savefig(figname)
+
+
+def SNRint_varyingRMS(catalog_file, RMS, sigma=6, plot=True, figname='', title=''):
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    # Rank 0 loads the full catalog
+    if rank == 0:
+        MHI, _, _, W50, _, _, _, _, z = gen.load_catalogParams(catalog_file)
+        N = len(MHI)
+    else:
+        MHI = W50 = z = None
+        N = 0
+
+    # Broadcast total size to everyone
+    N = comm.bcast(N, root=0)
+
+    # Each rank determines its slice
+    counts = N // size
+    remainder = N % size
+    start = rank * counts + min(rank, remainder)
+    stop = start + counts + (1 if rank < remainder else 0)
+
+    # Rank 0 sends out its data chunks manually
+    if rank == 0:
+        for r in range(1, size):
+            r_start = r * counts + min(r, remainder)
+            r_stop = r_start + counts + (1 if r < remainder else 0)
+            comm.send(MHI[r_start:r_stop], dest=r, tag=0)
+            comm.send(W50[r_start:r_stop], dest=r, tag=1)
+            comm.send(z[r_start:r_stop], dest=r, tag=2)
+        MHI = MHI[start:stop]
+        W50 = W50[start:stop]
+        z = z[start:stop]
+    else:
+        MHI = comm.recv(source=0, tag=0)
+        W50 = comm.recv(source=0, tag=1)
+        z = comm.recv(source=0, tag=2)
+
+    # --- now each rank has its chunk ---
+    mask, _ = SNRint_detections(MHI, W50, z, RMS=RMS, sigma=sigma)
+
+    # Gather masks if needed
+    all_masks = comm.gather(mask, root=0)
+    if rank == 0:
+        mask_full = np.concatenate(all_masks)
+        base, _ = os.path.splitext(catalog_file)
+        np.save(f"{base}_mask_{RMS}.npy", mask_full)
+        print(f"Saved combined mask for RMS={RMS}")
+
 
 def compareCatalogs(catalog1, catalog2, RMS, sigma=6, plt=True, figname='', title=''):
     MHI1, W501, Dec1, mask1 = SNRint_fromFile(catalog_file=catalog1, RMS=RMS, sigma=sigma, plt=False)
@@ -57,7 +115,8 @@ if __name__ == "__main__":
     
 #     SNRint_fromFile(catalog_file='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', 
 #                        RMS=0.1, figname='VolLim_z0p1_RMS0p1.png', title='Detections from Volume limited at sensitivity of 0.1 mJy')
-    SNRint_varyingRMS(catalog_file='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_merged.npy', figname='VaryingRMS_Vollim_z0p4_zmax1.png')
+#    SNRint_varyingRMS(catalog_file='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_merged.npy', figname='VaryingRMS_Vollim_z0p4_zmax1.png')
+    SNRint_varyingRMS(catalog_file='catalogs_output/VolLim_20to60deg_Dmax200_rank0.npy', RMS=0.2, figname='test_parallel.png')
 
 
 
