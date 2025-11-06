@@ -263,14 +263,14 @@ def load_catalogParams(catalog_file):
     z = cat[8]
     return MHI, Vrot, i, W_50, ra, dec, D, Vol, z 
 
-if __name__ == "__main__":
+#if __name__ == "__main__":
     #Gen_Catalog(zmax=0.1, npt=1000, dec1=20, dec2=80, Fluxlim=False, flname='catalogs_output/VolLim_20to60deg_zmax0p1')
     #Gen_Catalog(zmin=0.4, zmax=1, npt=10000, dec1=20, dec2=80, Fluxlim=False, SNRint=True, sigma_int=6, RMS=0.2,
     #            flname='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_sigmaint2')
     # LoadMockALFALFA('../ALFALFA_Mock_Brooks/mock_whole_sky_df', changeVelocity=False, 
     #                 Dist_range=[0,200], Dec_range=[20,80], 
     #                 outfile='catalogs_output/MockAlf_D200_Dec20to80.npy')
-    merge_rankfiles(flname='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1', delete_rank_files=False)
+    #merge_rankfiles(flname='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1', delete_rank_files=False)
 
     
 

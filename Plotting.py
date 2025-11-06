@@ -34,7 +34,8 @@ def recover_HIMF(catalog, nbins=30, VolLim=True, S21lim=None, Dmax=None, ra1=0, 
     solidang = gf.solid_angle(dec1, dec2, ra1, ra2)
     
     samples = np.load(catalog)
-    MHI_samples = samples[:,0]
+    print(samples.shape)
+    MHI_samples = samples[0]
     lg_MHI = np.log10(MHI_samples)
     print("max MHI is ", np.max(lg_MHI))
     print("min MHI is ", np.min(lg_MHI))
@@ -42,7 +43,7 @@ def recover_HIMF(catalog, nbins=30, VolLim=True, S21lim=None, Dmax=None, ra1=0, 
     
     if VolLim:
         if Dmax==None:
-            Dmax=np.max(samples[:,2])*u.Mpc
+            Dmax=np.max(samples[2])*u.Mpc
         counts, bins = np.histogram(lg_MHI, bins=nbins)
         Vmax = gf.VolumeFromDist(Dmax, solidang=solidang).value
         binwidth = (bins[1:])-(bins[:-1])
@@ -50,8 +51,8 @@ def recover_HIMF(catalog, nbins=30, VolLim=True, S21lim=None, Dmax=None, ra1=0, 
         #phi = np.log10(counts/(Vmax*(10**binwidth)))
     
     else:
-        W50 = samples[:,1]
-        D = samples[:,2]
+        W50 = samples[1]
+        D = samples[2]
         S21 = gf.MHI_toS(MHI=(10**lg_MHI)*u.solMass, delV=48*u.km/u.s, D=D*u.Mpc)
         Vmax = gf.Vmax_correct(D*u.Mpc, S21, S21lim, solidang).value
         counts_Vcorr, bins = np.histogram(lg_MHI, bins=nbins, weights=1/Vmax)
@@ -202,11 +203,13 @@ def Dec_Structure_MHI_pdf(catalog_file, n_bins=20, fname='', MHI_bins=[6.5,8,9,1
 def Detection_counts_MHI(MHI, mask, RMS, n_bins=30, figname='', title=''):
     plt.figure()
     plt.hist(np.log10(MHI), bins=n_bins, histtype='step', label='Full Catalog')
-    plt.hist(np.log10(MHI[mask]), bins=n_bins, histtype='step', label=f'Detected at RMS={RMS} mJy')
+    for i in range(len(mask)):
+        plt.hist(np.log10(MHI[mask[i]]), bins=n_bins, histtype='step', label=f'RMS={RMS[i]} mJy')
     plt.yscale('log')
     plt.title(title)
     plt.xlabel('log(MHI)')
     plt.ylabel('log(Counts)')
+    plt.legend()
     plt.savefig(figname)
     plt.show()
 
@@ -258,6 +261,7 @@ def Detection_compare_Decs(MHI1, MHI2, Dec1, Dec2, n_bins=30, figname='', title=
 #         plt.savefig(flname+'_'+extn[i]+'.png')
 
 #if __name__ == "__main__":
+    #recover_HIMF(catalog='catalogs_output/MockAlf_D200_Dec20to80_ChangeVelocity.npy', VolLim=False)
     #Sky_MHIsizeDcolour(catalog_file='catalogs_output/MockAlf_FullSky.npy', fname='Plots/MockALF_fullSky_MHIsizeDcolour.png', show=True, save=True)
     #Sky_MHIbins(catalog_file='catalogs_output/VolLim_20to60deg_Dmax200_rank0.npy', fname='Plots/Volim200Mpc_fullSky_structure_MHIbins.pdf')
     #Dec_Structure_MHI_pdf(catalog_file='catalogs_output/VolLim_20to60deg_Dmax200_rank0.npy', fname='Plots/Dec_MHIstructure_Volim200Mpc_CHORDSky.pdf')               
