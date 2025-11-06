@@ -6,6 +6,7 @@ import numpy as np
 import astropy.units as u
 import os
 import matplotlib.pyplot as plt
+import time
 
 def SNRint_detections(MHI, W50, z, RMS, sigma=6):
     chan_width = (1500*u.MHz/8192).to_value(u.Hz)
@@ -87,7 +88,10 @@ def SNRint_varyingRMS(catalog_file, RMS, sigma=6, plot=True, figname='', title='
         z = comm.recv(source=0, tag=2)
 
     # --- now each rank has its chunk ---
+    print(f"Started masking on rank[{rank}]")
+    t1 = time.time()
     mask, _ = SNRint_detections(MHI, W50, z, RMS=RMS, sigma=sigma)
+    print(f"Completed masking on rank[{rank}] in {time.time()-t1} seconds]")
 
     # Gather masks if needed
     all_masks = comm.gather(mask, root=0)
