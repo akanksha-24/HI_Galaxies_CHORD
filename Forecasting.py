@@ -78,9 +78,9 @@ def SNRint_varyingRMS(catalog_file, RMS, sigma=6, plot=True, figname='', title='
 
     # Scatter data using Scatterv (buffer-based)
     if rank == 0:
-        comm.Scatterv([MHI, counts, displs, MPI.FLOAT], MHI_local, root=0)
-        comm.Scatterv([W50, counts, displs, MPI.FLOAT], W50_local, root=0)
-        comm.Scatterv([z, counts, displs, MPI.FLOAT], z_local, root=0)
+        comm.Scatterv([np.ascontiguousarray(MHI), counts, displs, MPI.FLOAT], MHI_local, root=0)
+        comm.Scatterv([np.ascontiguousarray(W50), counts, displs, MPI.FLOAT], W50_local, root=0)
+        comm.Scatterv([np.ascontiguousarray(z), counts, displs, MPI.FLOAT], z_local, root=0)
     else:
         comm.Scatterv([None, counts, displs, MPI.FLOAT], MHI_local, root=0)
         comm.Scatterv([None, counts, displs, MPI.FLOAT], W50_local, root=0)
