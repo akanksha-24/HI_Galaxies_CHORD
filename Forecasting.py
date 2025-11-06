@@ -7,6 +7,7 @@ import astropy.units as u
 import os
 import matplotlib.pyplot as plt
 import time
+from mpi4py import MPI
 
 def SNRint_detections(MHI, W50, z, RMS, sigma=6):
     chan_width = (1500*u.MHz/8192).to_value(u.Hz)
@@ -49,54 +50,62 @@ def SNRint_fromFile(catalog_file, RMS, sigma=6, plt=True, figname='', title=''):
 
 
 def SNRint_varyingRMS(catalog_file, RMS, sigma=6, plot=True, figname='', title=''):
-    from mpi4py import MPI
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    # Rank 0 loads the full catalog
+    # Rank 0 loads full catalog
     if rank == 0:
         MHI, _, _, W50, _, _, _, _, z = gen.load_catalogParams(catalog_file)
         N = len(MHI)
     else:
-        MHI = W50 = z = None
+        MHI = None
+        W50 = None
+        z = None
         N = 0
 
-    # Broadcast total size to everyone
+    # Broadcast total size
     N = comm.bcast(N, root=0)
 
-    # Each rank determines its slice
-    counts = N // size
-    remainder = N % size
-    start = rank * counts + min(rank, remainder)
-    stop = start + counts + (1 if rank < remainder else 0)
+    # Compute counts and displacements for Scatterv
+    counts = np.array([(N // size) + (1 if i < N % size else 0) for i in range(size)], dtype=np.int32)
+    displs = np.insert(np.cumsum(counts[:-1]), 0, 0)
 
-    # Rank 0 sends out its data chunks manually
+    # Allocate receive buffers for each array chunk
+    MHI_local = np.empty(counts[rank], dtype=np.float32)
+    W50_local = np.empty(counts[rank], dtype=np.float32)
+    z_local = np.empty(counts[rank], dtype=np.float32)
+
+    # Scatter data using Scatterv (buffer-based)
     if rank == 0:
-        for r in range(1, size):
-            r_start = r * counts + min(r, remainder)
-            r_stop = r_start + counts + (1 if r < remainder else 0)
-            comm.send(MHI[r_start:r_stop], dest=r, tag=0)
-            comm.send(W50[r_start:r_stop], dest=r, tag=1)
-            comm.send(z[r_start:r_stop], dest=r, tag=2)
-        MHI = MHI[start:stop]
-        W50 = W50[start:stop]
-        z = z[start:stop]
+        comm.Scatterv([MHI, counts, displs, MPI.FLOAT], MHI_local, root=0)
+        comm.Scatterv([W50, counts, displs, MPI.FLOAT], W50_local, root=0)
+        comm.Scatterv([z, counts, displs, MPI.FLOAT], z_local, root=0)
     else:
-        MHI = comm.recv(source=0, tag=0)
-        W50 = comm.recv(source=0, tag=1)
-        z = comm.recv(source=0, tag=2)
+        comm.Scatterv([None, counts, displs, MPI.FLOAT], MHI_local, root=0)
+        comm.Scatterv([None, counts, displs, MPI.FLOAT], W50_local, root=0)
+        comm.Scatterv([None, counts, displs, MPI.FLOAT], z_local, root=0)
 
-    # --- now each rank has its chunk ---
+    # Timing and mask calculation per rank
     print(f"Started masking on rank[{rank}]")
     t1 = time.time()
-    mask, _ = SNRint_detections(MHI, W50, z, RMS=RMS, sigma=sigma)
-    print(f"Completed masking on rank[{rank}] in {time.time()-t1} seconds]")
+    mask_local, _ = SNRint_detections(MHI_local, W50_local, z_local, RMS=RMS, sigma=sigma)
+    print(f"Completed masking on rank[{rank}] in {time.time() - t1:.2f} seconds")
 
-    # Gather masks if needed
-    all_masks = comm.gather(mask, root=0)
+    # Prepare to gather masks (boolean arrays)
+    mask_counts = counts  # same counts apply to masks
+    mask_displs = displs
+
     if rank == 0:
-        mask_full = np.concatenate(all_masks)
+        mask_full = np.empty(N, dtype=mask_local.dtype)
+    else:
+        mask_full = None
+
+    # Gather masks from all ranks
+    comm.Gatherv(mask_local, [mask_full, mask_counts, mask_displs, MPI.BOOL], root=0)
+
+    # Rank 0 saves combined mask
+    if rank == 0:
         base, _ = os.path.splitext(catalog_file)
         np.save(f"{base}_mask_{RMS}.npy", mask_full)
         print(f"Saved combined mask for RMS={RMS}")
