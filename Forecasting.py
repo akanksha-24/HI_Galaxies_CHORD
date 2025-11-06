@@ -119,8 +119,8 @@ if __name__ == "__main__":
     
 #     SNRint_fromFile(catalog_file='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', 
 #                        RMS=0.1, figname='VolLim_z0p1_RMS0p1.png', title='Detections from Volume limited at sensitivity of 0.1 mJy')
-#    SNRint_varyingRMS(catalog_file='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_merged.npy', figname='VaryingRMS_Vollim_z0p4_zmax1.png')
-    SNRint_varyingRMS(catalog_file='catalogs_output/VolLim_20to60deg_Dmax200_rank0.npy', RMS=0.2, figname='test_parallel.png')
+    SNRint_varyingRMS(catalog_file='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_merged.npy', RMS=0.5, figname='VaryingRMS_Vollim_z0p4_zmax1.png')
+#    SNRint_varyingRMS(catalog_file='catalogs_output/VolLim_20to60deg_Dmax200_rank0.npy', RMS=0.2, figname='test_parallel.png')
 
 
 
