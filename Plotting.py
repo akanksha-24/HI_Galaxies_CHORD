@@ -98,14 +98,19 @@ def S21_W50(catalog_fl):
     plt.legend()
     plt.savefig('Plots/S21_W50.png')
 
-def MHI_Counts(catalog_fl, ax, n_bins=30, label='', color='', hatch='', bins=None):
+def MHI_Counts(catalog_fl, n_bins=30, label='', color='', hatch='', bins=None, ax=None, figname=''):
     catalog = np.load(catalog_fl)
     MHI = catalog[0]
-    if bins is None:
-        ax.hist(np.log10(MHI), bins=n_bins, histtype='step', label=label, color=color, hatch=hatch, linewidth=1.5)
+    if ax is None:
+        plt.figure(figsize=[5,4], dpi=300)
+        plt.hist(np.log10(MHI), bins=n_bins, histtype='step', label=label, color=color, hatch=hatch, linewidth=1.5)
+        plt.savefig(figname)
     else:
-        ax.hist(np.log10(MHI), bins=bins, histtype='step', label=label, color=color, hatch=hatch, linewidth=1.5)
-    ax.set_yscale('log')
+        if bins is None:
+            ax.hist(np.log10(MHI), bins=n_bins, histtype='step', label=label, color=color, hatch=hatch, linewidth=1.5)
+        else:
+            ax.hist(np.log10(MHI), bins=bins, histtype='step', label=label, color=color, hatch=hatch, linewidth=1.5)
+        ax.set_yscale('log')
 
 def dndz(catalog=None, N=None, z=None, flname='', compareHans=''):
     if catalog==None:
@@ -319,9 +324,13 @@ def W50z_Plane():
 #         plt.savefig(flname+'_'+extn[i]+'.png')
 
 if __name__ == "__main__":
-    W50z_Plane()
+    MHI_Counts(catalog_fl='catalogs_output/Detected_VolLim_RMS0p08__20to80deg_z0p4to1_MHI9to12.npy',
+               figname='Plots/z0p4to1_MHI_counts.png')
+    recover_HIMF(catalog_fl='catalogs_output/Detected_VolLim_RMS0p08__20to80deg_z0p4to1_MHI9to12.npy', 
+                 sigma=6, RMS=0.08, Vollim=False)
+    #W50z_Plane()
     #S21_W50(catalog_fl='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy')
-    #recover_HIMF(catalog_fl='catalogs_output/DetectionsVolLim_zmax0p1_fromRMS0p1_20to80deg.npy', sigma=6, RMS=0.1, Vollim=False)
+    #recover_HIMF(catalog_fl='DetectionsVolLim_zmax0p1_fromRMS0p1_20to80deg.npy', sigma=6, RMS=0.1, Vollim=False)
     #recover_HIMF_ALF(alf_fl='catalogs_output/ALFALFA_a100_50complete.npy')
     #MHI_W50(catalog_fl1='catalogs_output/Detected_RMS0p1_peakSNR6_VolLim_20to60deg_Dmax200.npy', 
     #       catalog_fl2='catalogs_output/ALFALFA_a100.npy')

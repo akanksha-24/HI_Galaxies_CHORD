@@ -151,7 +151,7 @@ def compareCatalogs(catalog1, catalog2, RMS, sigma=6, plt=True, figname='', titl
 if __name__ == "__main__":
 #    detections_fromObs(catalog_file='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy',
 #                        obsyears=5, nstrips=20, maskFl='DetectionsVolLim_zmax0p1_5yearObs_20strips_20to80deg.npy')
-#    detections_fromRMS(catalog_file='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', sigma=6, RMS=0.1, maskFl='DetectionsVolLim_zmax0p1_fromRMS0p1_20to80deg.npy')
+#   detections_fromRMS(catalog_file='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', sigma=6, RMS=0.1, maskFl='DetectionsVolLim_zmax0p1_fromRMS0p1_20to80deg.npy')
 #    detections_ALFALFA(catalog_file='catalogs_output/VolLim_20to80deg_Dmax200_rank0.npy', maskFl='DetectionsALFALFA_20to80deg_Dmax200.npy')
 #    SNRint_fromFile('catalogs_output/MockAlf_FullSky.npy', RMS=1, plt=False, maskFl='catalogs_output/maskRMS1_sigma6_MockAlf_FullSky.npy')
 #    SNRint_fromFile('catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', RMS=0.1, plt=False, 

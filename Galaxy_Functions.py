@@ -9,14 +9,14 @@ from scipy.interpolate import interp1d
 import Gaussian_Estimate as gauss
 from astropy.coordinates import Angle
 
-phi_s=6.58e-3
-M_s=10**9.86
-alpha=-1.30
+# phi_s=6.58e-3
+# M_s=10**9.86
+# alpha=-1.30
 
 #HIMF Schechter Parameters from Jones+ 2018:
-# phi_s=4.5e-3
-# M_s=10**9.94 
-# alpha=-1.25
+phi_s=4.5e-3
+M_s=10**9.94 
+alpha=-1.25
 
 # HIMF & HIWF Schechter Parameters from Oman 2021 alpha.100 + all uncertainties:
 # phi_s=10**(-2.26)
@@ -165,30 +165,31 @@ def SNR_int(z, MHI, DeltaV, RMS_chan, chan_width=(1500*u.MHz/8192).to_value(u.Hz
     
 def estimate_DLmax(MHI, z, sigma, RMS_chan, DeltaV, chan_width=(1500*u.MHz/8192).to_value(u.Hz)):
     C = 2.92*10**-4
-    RMS_chan = (RMS_chan/1000)
+    RMS_chan = (RMS_chan*u.mJy).to_value(u.Jy)
     DLsquared = C*(MHI/(RMS_chan*sigma))*np.sqrt((1+z)/(chan_width*DeltaV))
     return np.sqrt(DLsquared)
 
 def estimate_MHImax(z, sigma, RMS_chan, DeltaV, chan_width=(1500*u.MHz/8192).to_value(u.Hz)):
     C = 2.92*10**-4
-    RMS_chan = (RMS_chan/1000)
+    RMS_chan = (RMS_chan*u.mJy).to_value(u.Jy)
     D_L = cosmo.luminosity_distance(z).to_value(u.Mpc)
     MHImax = (sigma*RMS_chan*np.sqrt(chan_width*DeltaV)*D_L**2)/(np.sqrt(1+z)*C)
     return MHImax
     
-def Vmax_correct(catalog_file, sigma=6, RMS=0.1):
+def Vmax_correct(catalog_file, sigma=6, RMS=0.1, fromD=True):
     catalog = np.load(catalog_file)
     Dsurvey = np.nanmax(catalog[6]) # max survey distance
     W50_broad = gauss.W50_broadened(W50=catalog[3])
-    chan_width = (1500*u.MHz/8192).to_value(u.Hz)
-    #S21, D = int_S21(MHI=catalog[0], z=catalog[8])
     solidang = solid_angle(dec1=np.min(catalog[5]), dec2=np.max(catalog[5]), ra1=np.min(catalog[4]), ra2=np.max(catalog[4]))
-    #print("solid angle is ", solidang)
-    RMS = RMS/1000
-    #S21lim = S21_th(W50=W50_broad, RMS=RMS, sigma=sigma)
-    #S21lim = S21th_ALFALFA(W50=W50_broad, SNR=6.5)
-    #Dmax = D*np.sqrt(S21/S21lim)
-    Dmax = estimate_DLmax(MHI=catalog[0], z=catalog[8], sigma=sigma, RMS_chan=RMS, chan_width=chan_width, DeltaV=W50_broad)
+    if fromD:
+        chan_width = (1500*u.MHz/8192).to_value(u.Hz)
+        Dmax = estimate_DLmax(MHI=catalog[0], z=catalog[8], sigma=sigma, RMS_chan=RMS, chan_width=chan_width, DeltaV=W50_broad)
+    else:
+        RMS = (RMS*u.mJy).to_value(u.Jy)
+        S21, D = int_S21(MHI=catalog[0], z=catalog[8])
+        S21lim = S21_th(W50=W50_broad, RMS=RMS, sigma=sigma)
+        #S21lim = S21th_ALFALFA(W50=W50_broad, SNR=6.5)
+        Dmax = D*np.sqrt(S21/S21lim)
     Dmax[Dmax>Dsurvey]=Dsurvey
     Dmax = Dmax/(1+catalog[8]) # convert from luminosity distance to comoving
     Vmax = VolumeFromDist(Dmax, solidang=solidang)
