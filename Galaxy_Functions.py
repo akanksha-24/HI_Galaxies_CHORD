@@ -180,16 +180,17 @@ def Vmax_correct(catalog_file, sigma=6, RMS=0.1):
     catalog = np.load(catalog_file)
     Dsurvey = np.nanmax(catalog[6]) # max survey distance
     W50_broad = gauss.W50_broadened(W50=catalog[3])
-    #chan_width = (1500*u.MHz/8192).to_value(u.Hz)
-    S21, D = int_S21(MHI=catalog[0], z=catalog[8])
+    chan_width = (1500*u.MHz/8192).to_value(u.Hz)
+    #S21, D = int_S21(MHI=catalog[0], z=catalog[8])
     solidang = solid_angle(dec1=np.min(catalog[5]), dec2=np.max(catalog[5]), ra1=np.min(catalog[4]), ra2=np.max(catalog[4]))
     #print("solid angle is ", solidang)
     RMS = RMS/1000
-    S21lim = S21_th(W50=W50_broad, RMS=RMS, sigma=sigma)
+    #S21lim = S21_th(W50=W50_broad, RMS=RMS, sigma=sigma)
     #S21lim = S21th_ALFALFA(W50=W50_broad, SNR=6.5)
-    Dmax = D*np.sqrt(S21/S21lim)
+    #Dmax = D*np.sqrt(S21/S21lim)
+    Dmax = estimate_DLmax(MHI=catalog[0], z=catalog[8], sigma=sigma, RMS_chan=RMS, chan_width=chan_width, DeltaV=W50_broad)
     Dmax[Dmax>Dsurvey]=Dsurvey
-    #Dmax = estimate_DLmax(MHI=catalog[0], z=catalog[8], sigma=sigma, RMS_chan=RMS, chan_width=chan_width, DeltaV=W50_broad)
+    Dmax = Dmax/(1+catalog[8]) # convert from luminosity distance to comoving
     Vmax = VolumeFromDist(Dmax, solidang=solidang)
     return Vmax, catalog[0]
     

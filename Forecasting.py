@@ -39,10 +39,10 @@ def detections_ALFALFA(catalog_file, maskFl=''):
 def detections_fromRMS(catalog_file, maskFl='', RMS=0.1, sigma=6):
     catalog = np.load(catalog_file)
     W50_broad = gauss.W50_broadened(W50=catalog[3])
-    S21, _ = gf.int_S21(MHI=catalog[0], z=catalog[8])
     RMS = (RMS*u.mJy).to_value(u.Jy)
+    S21, _ = gf.int_S21(MHI=catalog[0], z=catalog[8])
     S21_th = gf.S21_th(W50=W50_broad, RMS=RMS, sigma=sigma, chan_kms=48)
-    mask = S21 > S21_th
+    mask = S21 >= S21_th
     if maskFl!='':
         np.save(maskFl, catalog[:,mask])
     return mask, S21, W50_broad
@@ -149,13 +149,15 @@ def compareCatalogs(catalog1, catalog2, RMS, sigma=6, plt=True, figname='', titl
 
 
 if __name__ == "__main__":
-    detections_fromObs(catalog_file='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy',
-                        obsyears=5, nstrips=20, maskFl='DetectionsVolLim_zmax0p1_5yearObs_20strips_20to80deg.npy')
+#    detections_fromObs(catalog_file='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy',
+#                        obsyears=5, nstrips=20, maskFl='DetectionsVolLim_zmax0p1_5yearObs_20strips_20to80deg.npy')
 #    detections_fromRMS(catalog_file='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', sigma=6, RMS=0.1, maskFl='DetectionsVolLim_zmax0p1_fromRMS0p1_20to80deg.npy')
 #    detections_ALFALFA(catalog_file='catalogs_output/VolLim_20to80deg_Dmax200_rank0.npy', maskFl='DetectionsALFALFA_20to80deg_Dmax200.npy')
 #    SNRint_fromFile('catalogs_output/MockAlf_FullSky.npy', RMS=1, plt=False, maskFl='catalogs_output/maskRMS1_sigma6_MockAlf_FullSky.npy')
-#    SNRint_fromFile('catalogs_output/VolLim_20to80deg_Dmax200_rank0.npy', RMS=0.1, plt=False, 
+#    SNRint_fromFile('catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', RMS=0.1, plt=False, 
 #                    maskFl='catalogs_output/Detected_RMS0p1_VolLim_20to80deg_Dmax200.npy')
+    SNRint_fromFile('catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_MHI9to12.npy', RMS=0.08, plt=False, 
+                   maskFl='catalogs_output/Detected_VolLim_RMS0p08__20to80deg_z0p4to1_MHI9to12.npy')
 #    SNRint_fromFile('catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', RMS=0.1, plt=False, maskFl='catalogs_output/DetectedRMS0p1_sigma6_VolLim_20to60deg_zmax0p1.npy')
 #     # compareCatalogs(catalog1='catalogs_output/VolLim_20to60deg_Dmax200_rank0.npy', 
 #     #                 catalog2='catalogs_output/MockAlf_FullSkyD200_Dec20to80_ChangeVelocity.npy',
