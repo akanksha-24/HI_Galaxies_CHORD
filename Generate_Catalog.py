@@ -53,22 +53,27 @@ def sample_radec(ra1, ra2, dec1, dec2, N, dtype=np.float32):
 
     return np.rad2deg(ra), np.rad2deg(dec)
 
-def sample_in_shell(V1, V2, N, solidang, dtype=np.float32):
-    """Sample N comoving distances uniformly in volume between V1 and V2"""
+def sample_in_shell(D1, D2, N, solidang=4*np.pi, dtype=np.float32):
+    """
+    Sample N comoving distances uniformly in volume between radii D1 and D2.
+    Returns distances D and corresponding partial volumes V.
+    """
     u = np.random.random(N).astype(dtype)
-    V = V1 + u*(V2-V1)
-    D = (3*V/solidang)**(1/3)
+    # Uniform in D^3 ensures uniform in volume
+    D = ((D1**3) + u * (D2**3 - D1**3))**(1/3)
+    V = (solidang / 3.0) * (D**3)
     return D, V
 
-def Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, V1, V2, zinterp, solidang,  dtype=np.float32, SNRint=False, RMS=0.2, sigma=6):
+def Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, D1, D2, zinterp, solidang,  dtype=np.float32, SNRint=False, RMS=0.2, sigma=6):
     MHI_sample = sample_HIMF(N, MHI).astype(dtype) # draw from HIMF
     VHI_sample = gf.VHI_polyFit(MHI_sample, dtype=dtype).astype(dtype) # estimate from abundance matching
     cos_i = np.random.random(N).astype(dtype)   # uniform in [0,1]
     i_sample = np.arccos(cos_i)   # inclination angles in [0, π/2] following a sin(i) probablity distribution function
     W50_sample = gf.estimate_W50(VHI_sample, i_sample, broaden=True, dtype=dtype)
     ra_sample, dec_sample = sample_radec(ra1, ra2, dec1, dec2, N, dtype=dtype)
-    D_sample, Vol_sample = sample_in_shell(V1, V2, N, solidang, dtype=dtype)
+    D_sample, Vol_sample = sample_in_shell(D1, D2, N, solidang, dtype=dtype)
     z_sample = zinterp(D_sample)
+    #print(np.min(z_sample))
     #Vol_drawn = np.full(N, V2.value)
     if SNRint:
         mask, _ = fore.SNRint_detections(MHI=MHI_sample, W50=W50_sample, z=z_sample, RMS=RMS, sigma=sigma)
@@ -121,7 +126,6 @@ def Gen_Catalog(zmax, npt, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=
     if rank == 0:
         print(f"max redshift is {zmax}")
     z, D, V, dV = gf.comoving_volume(zmin=zmin, zmax=zmax, npt=npt, solidang=solidang)
-    print(V)
 
     #Split work among ranks
     all_indices = np.arange(len(dV))
@@ -149,16 +153,17 @@ def Gen_Catalog(zmax, npt, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=
         if draw:
             if i == 0:
                 if zmin==0:
-                    samples_ = Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, 0, V[i], z_interp, solidang, dtype=dtype, SNRint=SNRint, sigma=sigma_int, RMS=RMS)
+                    samples_ = Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, 0, D[i], z_interp, solidang, dtype=dtype, SNRint=SNRint, sigma=sigma_int, RMS=RMS)
                 else:
                     continue
             else:
-                samples_ = Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, V[i-1], V[i], z_interp, solidang, dtype=dtype, SNRint=SNRint, sigma=sigma_int, RMS=RMS)
+                samples_ = Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, D[i-1], D[i], z_interp, solidang, dtype=dtype, SNRint=SNRint, sigma=sigma_int, RMS=RMS)
             local_samples.append(samples_)
     print("Saving samples...")
     if draw:
         rank_filename = f"{flname}_rank{rank}.npy"
         local_arrays = np.vstack(local_samples) if len(local_samples) > 0 else np.empty((0,9), dtype=dtype)
+        print("minimum z drawn is ", np.min(local_arrays.T[8]))
         np.save(rank_filename, local_arrays.T)
 
     all_Narr = comm.gather(local_Narr, root=0)

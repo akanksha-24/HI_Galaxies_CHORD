@@ -76,8 +76,8 @@ def build_z_interp(zmin=0, zmax=5.0, npt=10000, dtype=np.float32):
     D = cosmo.comoving_distance(z_grid.astype(np.float64)).to(u.Mpc).value.astype(dtype)
     return interp1d(D, z_grid, kind="linear", bounds_error=False, fill_value=(0.0, zmax))
 
-def VolumeFromDist(D, solidang=4*np.pi):
-    return (1/3)*solidang*(D**3)
+def VolumeFromDist(D, solidang=4*np.pi, Dmin=0):
+    return (1/3)*solidang*((D-Dmin)**3)
 
 def Hubble_redshift(D, H0=(67.77*u.km/u.s/u.Mpc).value):
     '''Use for local universe'''
@@ -181,6 +181,8 @@ def Vmax_correct(catalog_file, sigma=6, RMS=0.1, fromD=True):
     Dsurvey = np.nanmax(catalog[6]) # max survey distance
     W50_broad = gauss.W50_broadened(W50=catalog[3])
     solidang = solid_angle(dec1=np.min(catalog[5]), dec2=np.max(catalog[5]), ra1=np.min(catalog[4]), ra2=np.max(catalog[4]))
+    zmin = np.nanmin(catalog[8])
+    print("zmin is ", zmin)
     if fromD:
         chan_width = (1500*u.MHz/8192).to_value(u.Hz)
         Dmax = estimate_DLmax(MHI=catalog[0], z=catalog[8], sigma=sigma, RMS_chan=RMS, chan_width=chan_width, DeltaV=W50_broad)
@@ -192,7 +194,8 @@ def Vmax_correct(catalog_file, sigma=6, RMS=0.1, fromD=True):
         Dmax = D*np.sqrt(S21/S21lim)
     Dmax[Dmax>Dsurvey]=Dsurvey
     Dmax = Dmax/(1+catalog[8]) # convert from luminosity distance to comoving
-    Vmax = VolumeFromDist(Dmax, solidang=solidang)
+    Dmin = Comoving_Dist(zmin).value
+    Vmax = VolumeFromDist(Dmax, solidang=solidang, Dmin=Dmin)
     return Vmax, catalog[0]
     
 # def Vmax_correct(MHI, z, RMS, sigma, W50, solidang):

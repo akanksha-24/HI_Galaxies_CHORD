@@ -30,7 +30,7 @@ def MHI_VHI_polynomial(MHI=np.logspace(5,11,100000)):
     plt.savefig('MHI_VHI.png')
     plt.show()
 
-def recover_HIMF(catalog_fl, Vollim=False, mask_fl='', RMS=0.1, sigma=6, nbins=30, marker='.', figname='',
+def recover_HIMF(catalog_fl, Vollim=False, mask_fl='', RMS=0.1, sigma=6, nbins=30, marker='.', figname='', zmin=0,
                   MHI_grid=gf.MHI_grid, ax=None, color='', label='', ALF=False, bins=None, count_min=10):
     HIMF_lg = gf.schechter_fit_lg(MHI=MHI_grid)
     
@@ -326,8 +326,8 @@ def W50z_Plane(RMS=0.1, sigma=6):
 if __name__ == "__main__":
     MHI_Counts(catalog_fl='catalogs_output/Detected_VolLim_RMS0p08__20to80deg_z0p4to1_MHI9to12.npy',
                figname='Plots/z0p4to1_MHI_counts.png')
-    #recover_HIMF(catalog_fl='catalogs_output/Detected_VolLim_RMS0p08__20to80deg_z0p4to1_MHI9to12.npy', 
-    #             figname='Plots/z0p4to1_HIMF.png', sigma=6, RMS=0.08, Vollim=False)
+    recover_HIMF(catalog_fl='catalogs_output/Detected_VolLim_RMS0p08__20to80deg_z0p4to1_MHI9to12.npy', 
+                 figname='Plots/z0p4to1_HIMF.png', sigma=6, RMS=0.08, Vollim=False, zmin=0.4)
     #W50z_Plane(RMS=)
     #S21_W50(catalog_fl='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy')
     #recover_HIMF(catalog_fl='DetectionsVolLim_zmax0p1_fromRMS0p1_20to80deg.npy', sigma=6, RMS=0.1, Vollim=False)
