@@ -121,8 +121,9 @@ def Gen_Catalog(zmax, npt, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=
     if rank == 0:
         print(f"max redshift is {zmax}")
     z, D, V, dV = gf.comoving_volume(zmin=zmin, zmax=zmax, npt=npt, solidang=solidang)
+    print(V)
 
-    # Split work among ranks
+    #Split work among ranks
     all_indices = np.arange(len(dV))
     rank_indices = np.array_split(all_indices, size)[rank]
 
@@ -147,7 +148,10 @@ def Gen_Catalog(zmax, npt, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=
 
         if draw:
             if i == 0:
-                samples_ = Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, 0, V[i], z_interp, solidang, dtype=dtype, SNRint=SNRint, sigma=sigma_int, RMS=RMS)
+                if zmin==0:
+                    samples_ = Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, 0, V[i], z_interp, solidang, dtype=dtype, SNRint=SNRint, sigma=sigma_int, RMS=RMS)
+                else:
+                    continue
             else:
                 samples_ = Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, V[i-1], V[i], z_interp, solidang, dtype=dtype, SNRint=SNRint, sigma=sigma_int, RMS=RMS)
             local_samples.append(samples_)

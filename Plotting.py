@@ -285,11 +285,11 @@ def Detection_compare_Decs(MHI1, MHI2, Dec1, Dec2, n_bins=30, figname='', title=
     plt.savefig(figname)
     plt.show()
 
-def W50z_Plane():
+def W50z_Plane(RMS=0.1, sigma=6):
     z = np.linspace(0,1,1000)
     lg_W50 = np.linspace(1, 3, 1000)
     z_2d, lgW50_2d = np.meshgrid(z, lg_W50)
-    MHI_2d = gf.estimate_MHImax(z=z_2d, sigma=6, RMS_chan=0.1, DeltaV=10**(lgW50_2d))
+    MHI_2d = gf.estimate_MHImax(z=z_2d, sigma=sigma, RMS_chan=RMS, DeltaV=10**(lgW50_2d))
     plt.figure(figsize=[5,4], dpi=300)
     plt.imshow(np.log10(MHI_2d), extent=[z.min(), z.max(), lg_W50.min(), lg_W50.max()], origin='lower', aspect='auto'     )
     plt.xlabel("Redshift z")
@@ -326,9 +326,9 @@ def W50z_Plane():
 if __name__ == "__main__":
     MHI_Counts(catalog_fl='catalogs_output/Detected_VolLim_RMS0p08__20to80deg_z0p4to1_MHI9to12.npy',
                figname='Plots/z0p4to1_MHI_counts.png')
-    recover_HIMF(catalog_fl='catalogs_output/Detected_VolLim_RMS0p08__20to80deg_z0p4to1_MHI9to12.npy', 
-                 figname='Plots/z0p4to1_HIMF.png', sigma=6, RMS=0.08, Vollim=False)
-    #W50z_Plane()
+    #recover_HIMF(catalog_fl='catalogs_output/Detected_VolLim_RMS0p08__20to80deg_z0p4to1_MHI9to12.npy', 
+    #             figname='Plots/z0p4to1_HIMF.png', sigma=6, RMS=0.08, Vollim=False)
+    #W50z_Plane(RMS=)
     #S21_W50(catalog_fl='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy')
     #recover_HIMF(catalog_fl='DetectionsVolLim_zmax0p1_fromRMS0p1_20to80deg.npy', sigma=6, RMS=0.1, Vollim=False)
     #recover_HIMF_ALF(alf_fl='catalogs_output/ALFALFA_a100_50complete.npy')
