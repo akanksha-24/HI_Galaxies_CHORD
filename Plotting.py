@@ -6,6 +6,7 @@ import astropy.constants as c
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.pyplot import cm
 import Generate_Catalog as gen
+import Forecasting as forecast
 
 def param_distributions(catalog, n_bins=20, flname=''):
     catalog = np.load(catalog)
@@ -28,48 +29,83 @@ def MHI_VHI_polynomial(MHI=np.logspace(5,11,100000)):
     plt.plot(np.log10(MHI), VHI)
     plt.savefig('MHI_VHI.png')
     plt.show()
-    
-def recover_HIMF(catalog, nbins=30, VolLim=True, S21lim=None, Dmax=None, ra1=0, ra2=360, dec1=20, dec2=80, MHI=gf.MHI_grid):
-    HIMF_lg = gf.schechter_fit_lg(MHI=MHI)
-    solidang = gf.solid_angle(dec1, dec2, ra1, ra2)
-    
-    samples = np.load(catalog)
-    print(samples.shape)
-    MHI_samples = samples[0]
-    lg_MHI = np.log10(MHI_samples)
-    print("max MHI is ", np.max(lg_MHI))
-    print("min MHI is ", np.min(lg_MHI))
-    #Vol_drawn = samples[:,9]
-    
-    if VolLim:
-        if Dmax==None:
-            Dmax=np.max(samples[2])*u.Mpc
-        counts, bins = np.histogram(lg_MHI, bins=nbins)
-        Vmax = gf.VolumeFromDist(Dmax, solidang=solidang).value
-        binwidth = (bins[1:])-(bins[:-1])
-        phi = np.log10(counts/(Vmax*binwidth))
-        #phi = np.log10(counts/(Vmax*(10**binwidth)))
-    
-    else:
-        W50 = samples[1]
-        D = samples[2]
-        S21 = gf.MHI_toS(MHI=(10**lg_MHI)*u.solMass, delV=48*u.km/u.s, D=D*u.Mpc)
-        Vmax = gf.Vmax_correct(D*u.Mpc, S21, S21lim, solidang).value
-        counts_Vcorr, bins = np.histogram(lg_MHI, bins=nbins, weights=1/Vmax)
-        binwidth = (bins[1:])-(bins[:-1])
-        phi = np.log10(counts_Vcorr/(10**binwidth))
 
-    bin_centers = gf.mid_bin(bins)
+def recover_HIMF(catalog_fl, Vollim=False, mask_fl='', RMS=0.1, sigma=6, nbins=30, marker='.',
+                  MHI_grid=gf.MHI_grid, ax=None, color='', label='', ALF=False, bins=None, count_min=10):
+    HIMF_lg = gf.schechter_fit_lg(MHI=MHI_grid)
     
-    plt.figure(figsize=[5,3],dpi=200)
-    plt.plot(np.log10(MHI), np.log10(HIMF_lg), label='HIMF - drawn from, Jones2018') # HIMF
-    plt.scatter(bin_centers, phi, s=3, label='HIMF - recovered', color='black') # from sample
-    plt.ylabel('$\phi(M_{HI})$')
-    plt.xlabel('log(M$_{HI}$/M$_{\odot}$)')
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig('HIMF_recover.png')
+    if Vollim:
+        MHI, _, _, _, _, _, _, Vol, _ = gen.load_catalogParams(catalog_file=catalog_fl)
+        Vmax = np.max(Vol)
+        if bins is None:
+            counts, bins = np.histogram(np.log10(MHI), bins=nbins)
+        else:
+            counts, bins = np.histogram(np.log10(MHI), bins=bins)
+        binwidth = (bins[1:])-(bins[:-1])
+        phi = counts/(Vmax*binwidth)
+
+    else:
+        if ALF:
+            Vmax, MHI = gf.Vmax_ALF(alf_fl=catalog_fl)
+        else:
+            Vmax, MHI = gf.Vmax_correct(catalog_file=catalog_fl, sigma=sigma, RMS=RMS)
+        if bins is None:
+            counts_Vcorr, bins = np.histogram(np.log10(MHI), bins=nbins, weights=1/Vmax)
+        else:
+            counts_Vcorr, bins = np.histogram(np.log10(MHI), bins=bins, weights=1/Vmax)
+        counts, bins = np.histogram(np.log10(MHI), bins=bins)
+        binwidth = (bins[1:])-(bins[:-1])
+        phi = counts_Vcorr/(binwidth)
+    
+    phi[counts<count_min] = np.nan
+        
+    bin_centers = gf.mid_bin(bins)
+    if ax is None:
+        plt.figure(figsize=[5,3],dpi=200)
+        plt.plot(np.log10(MHI_grid), np.log10(HIMF_lg), label='HIMF - drawn from, Jones2018') # HIMF
+        plt.scatter(bin_centers, np.log10(phi), s=8, label='HIMF - recovered', color='black') # from sample
+        plt.ylabel('$\phi(M_{HI})$')
+        plt.xlabel('log(M$_{HI}$/M$_{\odot}$)')
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig('Detections_RMS0p1_Dmax200_RecoverHIMF.png')
+        plt.show()
+    else:
+        ax.plot(np.log10(MHI_grid), HIMF_lg, label='Jones+2018', color='darkgray', linewidth=1, linestyle='--') # HIMF
+        ax.scatter(bin_centers, phi, s=8, label=label, color=color, marker=marker) # from sample
+        ax.set_yscale('log')
+        return (len(MHI))
+
+def MHI_W50(catalog_fl1, catalog_fl2):
+    cat1 = np.load(catalog_fl1)
+    MHI1 = cat1[0]; W501= cat1[3]
+    cat2 = np.load(catalog_fl2)
+    MHI2 = cat2[0]; W502= cat2[3]
+    plt.figure()
+    plt.scatter(np.log10(MHI2), np.log10(W502), alpha=0.4)
+    plt.scatter(np.log10(MHI1), np.log10(W501), alpha=0.4)
+    plt.xlabel('log(MHI)')
+    plt.ylabel('W50 (km/s)')
     plt.show()
+
+def S21_W50(catalog_fl):
+    mask, S21, W50 = forecast.detections_fromRMS(catalog_file=catalog_fl, RMS=0.1, )
+    plt.figure()
+    plt.scatter(np.log10(W50[mask]), np.log10(S21[mask]), alpha=0.4, s=1, label='Detected', color='blue')
+    plt.scatter(np.log10(W50[~mask]), np.log10(S21[~mask]), alpha=0.4, s=1, label='Nondetected', color='lightgray')
+    plt.xlabel('log(W$_{50}$/km s$^{-1}$)')
+    plt.ylabel('log(S$_21$/Jy km s${-1}$')
+    plt.legend()
+    plt.savefig('Plots/S21_W50.png')
+
+def MHI_Counts(catalog_fl, ax, n_bins=30, label='', color='', hatch='', bins=None):
+    catalog = np.load(catalog_fl)
+    MHI = catalog[0]
+    if bins is None:
+        ax.hist(np.log10(MHI), bins=n_bins, histtype='step', label=label, color=color, hatch=hatch, linewidth=1.5)
+    else:
+        ax.hist(np.log10(MHI), bins=bins, histtype='step', label=label, color=color, hatch=hatch, linewidth=1.5)
+    ax.set_yscale('log')
 
 def dndz(catalog=None, N=None, z=None, flname='', compareHans=''):
     if catalog==None:
@@ -244,6 +280,28 @@ def Detection_compare_Decs(MHI1, MHI2, Dec1, Dec2, n_bins=30, figname='', title=
     plt.savefig(figname)
     plt.show()
 
+def W50z_Plane():
+    z = np.linspace(0,1,1000)
+    lg_W50 = np.linspace(1, 3, 1000)
+    z_2d, lgW50_2d = np.meshgrid(z, lg_W50)
+    MHI_2d = gf.estimate_MHImax(z=z_2d, sigma=6, RMS_chan=0.1, DeltaV=10**(lgW50_2d))
+    plt.figure(figsize=[5,4], dpi=300)
+    plt.imshow(np.log10(MHI_2d), extent=[z.min(), z.max(), lg_W50.min(), lg_W50.max()], origin='lower', aspect='auto'     )
+    plt.xlabel("Redshift z")
+    plt.ylabel("log(W50/km s$^{-1}$)")
+    plt.colorbar(label="log($M_{HI}$/$M_{\odot}$)")
+
+    levels = [8,9,10,10.5,11,11.5] # in log space
+    CS = plt.contour(
+        z_2d, lgW50_2d, np.log10(MHI_2d),
+        levels=levels, colors='black', linewidths=1, linestyles='dashed'
+    )
+    plt.clabel(CS, inline=True, inline_spacing=0, fontsize=10, fmt=lambda v: f"{v:.1f}")
+    #plt.margins(x=0.02, y=0.02)
+    plt.tight_layout()
+    plt.savefig('Plots/W50z_Plane.png')
+    plt.show()
+
 
 # def Forecast_counts(MHI_lg, mask):
 #     catalog = np.load(catalog)
@@ -260,7 +318,19 @@ def Detection_compare_Decs(MHI1, MHI2, Dec1, Dec2, n_bins=30, figname='', title=
 #         plt.tight_layout()
 #         plt.savefig(flname+'_'+extn[i]+'.png')
 
-#if __name__ == "__main__":
+if __name__ == "__main__":
+    W50z_Plane()
+    #S21_W50(catalog_fl='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy')
+    #recover_HIMF(catalog_fl='catalogs_output/DetectionsVolLim_zmax0p1_fromRMS0p1_20to80deg.npy', sigma=6, RMS=0.1, Vollim=False)
+    #recover_HIMF_ALF(alf_fl='catalogs_output/ALFALFA_a100_50complete.npy')
+    #MHI_W50(catalog_fl1='catalogs_output/Detected_RMS0p1_peakSNR6_VolLim_20to60deg_Dmax200.npy', 
+    #       catalog_fl2='catalogs_output/ALFALFA_a100.npy')
+    #recover_HIMF(catalog_fl='catalogs_output/VolLim_20to60deg_Dmax200_rank0.npy', Vollim=True)
+    #recover_HIMF(catalog_fl='catalogs_output/Detected_RMS0p1_VolLim_20to80deg_Dmax200.npy', Vollim=False, RMS=0.1, sigma=6)
+    #recover_HIMF(catalog_fl='catalogs_output/MockAlf_FullSky.npy', RMS=1, sigma=6,
+    #            mask_fl='catalogs_output/maskRMS1_sigma6_MockAlf_FullSky.npy')
+    #recover_HIMF(catalog_fl='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', RMS=0.1, sigma=6,
+    #             mask_fl='catalogs_output/maskRMS0p1_sigma6_VolLim_20to60deg_zmax0p1.npy')
     #recover_HIMF(catalog='catalogs_output/MockAlf_D200_Dec20to80_ChangeVelocity.npy', VolLim=False)
     #Sky_MHIsizeDcolour(catalog_file='catalogs_output/MockAlf_FullSky.npy', fname='Plots/MockALF_fullSky_MHIsizeDcolour.png', show=True, save=True)
     #Sky_MHIbins(catalog_file='catalogs_output/VolLim_20to60deg_Dmax200_rank0.npy', fname='Plots/Volim200Mpc_fullSky_structure_MHIbins.pdf')

@@ -8,21 +8,50 @@ import os
 import matplotlib.pyplot as plt
 import time
 from mpi4py import MPI
+import CHORD_Sensitivity as chord
 
-def SNRint_detections(MHI, W50, z, RMS, sigma=6):
+def SNR_detections(MHI, W50, z, RMS, sigma=6):
     chan_width = (1500*u.MHz/8192).to_value(u.Hz)
     RMS = (RMS*u.mJy).to_value(u.Jy)
     W50_broad = gauss.W50_broadened(W50)
-    SNRint = gf.SNR_int(z, MHI, W50_broad, chan_width=chan_width, RMS_chan=RMS)
-    mask = SNRint >= sigma
-    return mask, W50_broad
+    SNR = gf.SNR_int(z, MHI, W50_broad, chan_width=chan_width, RMS_chan=RMS)
+    mask = SNR >= sigma
+    return mask
 
-def SNRint_fromFile(catalog_file, RMS, sigma=6, plt=True, figname='', title=''):
-    MHI, _, _, W50, _, Dec, _, _, z = gen.load_catalogParams(catalog_file)
-    mask, W50_broad = SNRint_detections(MHI, W50, z)
+def SNRint_fromFile(catalog_file, RMS, sigma=6, plt=True, figname='', title='', maskFl='', integrated=True):
+    catalog = np.load(catalog_file)
+    mask = SNR_detections(MHI=catalog[0], W50=catalog[3], z=catalog[8], RMS=RMS, sigma=sigma)
     if plt==True:
-        plot.Detection_counts_MHI(MHI, mask, RMS, figname=figname, title=title)
-    return MHI, W50_broad, Dec, mask 
+        plot.Detection_counts_MHI(MHI=catalog[0], mask=mask, RMS=RMS, figname=figname, title=title)
+    if maskFl!='':
+        np.save(maskFl, catalog[:,mask])
+
+def detections_ALFALFA(catalog_file, maskFl=''):
+    catalog = np.load(catalog_file)
+    W50_broad = gauss.W50_broadened(W50=catalog[3])
+    S21, _ = gf.int_S21(MHI=catalog[0], z=catalog[8])
+    S21_thALF = gf.S21th_ALFALFA(W50=W50_broad, SNR=6.5)
+    mask = S21 > S21_thALF
+    if maskFl!='':
+        np.save(maskFl, catalog[:,mask])
+    return mask
+
+def detections_fromRMS(catalog_file, maskFl='', RMS=0.1, sigma=6):
+    catalog = np.load(catalog_file)
+    W50_broad = gauss.W50_broadened(W50=catalog[3])
+    S21, _ = gf.int_S21(MHI=catalog[0], z=catalog[8])
+    RMS = (RMS*u.mJy).to_value(u.Jy)
+    S21_th = gf.S21_th(W50=W50_broad, RMS=RMS, sigma=sigma, chan_kms=48)
+    mask = S21 > S21_th
+    if maskFl!='':
+        np.save(maskFl, catalog[:,mask])
+    return mask, S21, W50_broad
+
+def detections_fromObs(catalog_file, maskFl, obsyears, nstrips, sigma=6):
+    obsdays = 365*obsyears/nstrips
+    RMS = chord.time2RMS(days=obsdays, decl=20, PB=True, nu=183*u.kHz, N=512)
+    print("RMS is ", RMS)
+    detections_fromRMS(catalog_file=catalog_file, maskFl=maskFl, RMS=RMS.value, sigma=sigma)
 
 # def SNRint_varyingRMS(catalog_file, RMS, sigma=6, plot=True, figname='', title=''):
 #     from mpi4py import MPI
@@ -89,7 +118,7 @@ def SNRint_varyingRMS(catalog_file, RMS, sigma=6, plot=True, figname='', title='
     # Timing and mask calculation per rank
     print(f"Started masking on rank[{rank}]")
     t1 = time.time()
-    mask_local, _ = SNRint_detections(MHI_local, W50_local, z_local, RMS=RMS, sigma=sigma)
+    mask_local, _ = SNR_detections(MHI_local, W50_local, z_local, RMS=RMS, sigma=sigma)
     print(f"Completed masking on rank[{rank}] in {time.time() - t1:.2f} seconds")
 
     # Prepare to gather masks (boolean arrays)
@@ -120,6 +149,14 @@ def compareCatalogs(catalog1, catalog2, RMS, sigma=6, plt=True, figname='', titl
 
 
 if __name__ == "__main__":
+    detections_fromObs(catalog_file='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy',
+                        obsyears=5, nstrips=20, maskFl='DetectionsVolLim_zmax0p1_5yearObs_20strips_20to80deg.npy')
+#    detections_fromRMS(catalog_file='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', sigma=6, RMS=0.1, maskFl='DetectionsVolLim_zmax0p1_fromRMS0p1_20to80deg.npy')
+#    detections_ALFALFA(catalog_file='catalogs_output/VolLim_20to80deg_Dmax200_rank0.npy', maskFl='DetectionsALFALFA_20to80deg_Dmax200.npy')
+#    SNRint_fromFile('catalogs_output/MockAlf_FullSky.npy', RMS=1, plt=False, maskFl='catalogs_output/maskRMS1_sigma6_MockAlf_FullSky.npy')
+#    SNRint_fromFile('catalogs_output/VolLim_20to80deg_Dmax200_rank0.npy', RMS=0.1, plt=False, 
+#                    maskFl='catalogs_output/Detected_RMS0p1_VolLim_20to80deg_Dmax200.npy')
+#    SNRint_fromFile('catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', RMS=0.1, plt=False, maskFl='catalogs_output/DetectedRMS0p1_sigma6_VolLim_20to60deg_zmax0p1.npy')
 #     # compareCatalogs(catalog1='catalogs_output/VolLim_20to60deg_Dmax200_rank0.npy', 
 #     #                 catalog2='catalogs_output/MockAlf_FullSkyD200_Dec20to80_ChangeVelocity.npy',
 #     #                 RMS=2, figname='Plots/Compare_VolFluxCats_RMS2_D200_MHIbins.png', title='Detections at RMS=2 mJy')
@@ -128,7 +165,7 @@ if __name__ == "__main__":
     
 #     SNRint_fromFile(catalog_file='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', 
 #                        RMS=0.1, figname='VolLim_z0p1_RMS0p1.png', title='Detections from Volume limited at sensitivity of 0.1 mJy')
-    SNRint_varyingRMS(catalog_file='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_merged.npy', RMS=0.5, figname='VaryingRMS_Vollim_z0p4_zmax1.png')
+#    SNRint_varyingRMS(catalog_file='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_merged.npy', RMS=0.5, figname='VaryingRMS_Vollim_z0p4_zmax1.png')
 #    SNRint_varyingRMS(catalog_file='catalogs_output/VolLim_20to60deg_Dmax200_rank0.npy', RMS=0.2, figname='test_parallel.png')
 
 

@@ -6,18 +6,35 @@ from scipy.special import gammaincc,expi,gamma
 from astropy.cosmology import Planck18 as cosmo_P2018
 from astropy.cosmology import FlatLambdaCDM
 from scipy.interpolate import interp1d
+import Gaussian_Estimate as gauss
+from astropy.coordinates import Angle
 
-# HIMF Schechter Parameters from Jones 2018:
-phi_s=4.5e-3
-M_s=10**9.94 
-alpha=-1.25
-MHI_grid = np.logspace(5,12,10000)
+phi_s=6.58e-3
+M_s=10**9.86
+alpha=-1.30
+
+#HIMF Schechter Parameters from Jones+ 2018:
+# phi_s=4.5e-3
+# M_s=10**9.94 
+# alpha=-1.25
+
+# HIMF & HIWF Schechter Parameters from Oman 2021 alpha.100 + all uncertainties:
+# phi_s=10**(-2.26)
+# M_s=10**9.92 
+# alpha=-1.29
+
+# phi_sW=10**(-1.67)
+# W_s=10**(307)
+# alpha_W=-0.63
+# beta_W=2.0
+
+MHI_grid = np.logspace(5,11,100000)
 
 #Constant for MHI calculation:
 C21 = (2.356 * 10**5) * u.solMass * u.Mpc**-2 * (u.Jy*u.km/u.s)**-1
 
 def mid_bin(var):
-    return 0.5*(var[1:] + var[:-1])
+    return (var[1:] + var[:-1])/2
 
 ############################# Setting Cosmology distances and volume  ######################
 
@@ -26,7 +43,10 @@ def set_cosmology(h=0.7, om=0.315):
     cosmo = FlatLambdaCDM(H0=H0, Om0=om)
     return cosmo
 
-def comoving_volume(zmax, zmin=0, npt=20000, solidang=4*np.pi, cosmo=cosmo_P2018):
+cosmo=cosmo_Jones2018 = set_cosmology(h=0.7)
+# cosmo_P2018
+
+def comoving_volume(zmax, zmin=0, npt=20000, solidang=4*np.pi):
     '''Get comoving volume, dV shell volume and distance from redshift'''
     z_arr = np.linspace(zmin, zmax, npt)
     dz = np.diff(z_arr)
@@ -47,10 +67,10 @@ def comoving_volume(zmax, zmin=0, npt=20000, solidang=4*np.pi, cosmo=cosmo_P2018
 def freq_fromz(z, f0=1420*u.MHz):
     return f0 / (1+z)
 
-def Comoving_Dist(z, cosmo=cosmo_P2018):
+def Comoving_Dist(z):
     return cosmo.comoving_distance(z).to(u.Mpc)
 
-def build_z_interp(zmin=0, zmax=5.0, npt=10000, cosmo=cosmo_P2018, dtype=np.float32):
+def build_z_interp(zmin=0, zmax=5.0, npt=10000, dtype=np.float32):
     """Build fast interp to invert comoving_distance to get redshift z."""
     z_grid = np.linspace(zmin, zmax, npt, dtype=dtype)
     D = cosmo.comoving_distance(z_grid.astype(np.float64)).to(u.Mpc).value.astype(dtype)
@@ -124,10 +144,65 @@ def MHI_toS(MHI, delV, D, unitless=True):
     else:
         return ((MHI)/(C21*delV*D**2)).to(u.Jy)
     
-def Vmax_correct(D, S21, S21lim, solidang):
+def int_S21(MHI, z):
+    D_L = cosmo.luminosity_distance(z).to_value(u.Mpc)
+    S21 = MHI*(1+z)/(D_L**2 * C21.value) 
+    return S21, D_L
+
+def int_S21Hz(MHI, z):
+    '''returns integrated flux in units of Jy*Hz'''
+    D_L = cosmo.luminosity_distance(z).to_value(u.Mpc)
+    S21 = MHI/(D_L**2 * 49.7)
+    return S21, D_L 
+
+def SNR_int(z, MHI, DeltaV, RMS_chan, chan_width=(1500*u.MHz/8192).to_value(u.Hz)):
+    '''The integrated signal-to-noise from rest-frame velocity widths
+       Using Equation 156 from https://arxiv.org/pdf/1705.04210'''
+    
+    D_L = cosmo.luminosity_distance(z).to_value(u.Mpc)
+    C = 2.92*10**-4
+    return C*(MHI/(RMS_chan*D_L**2))*np.sqrt((1+z)/(chan_width*DeltaV))
+    
+def estimate_DLmax(MHI, z, sigma, RMS_chan, DeltaV, chan_width=(1500*u.MHz/8192).to_value(u.Hz)):
+    C = 2.92*10**-4
+    RMS_chan = (RMS_chan/1000)
+    DLsquared = C*(MHI/(RMS_chan*sigma))*np.sqrt((1+z)/(chan_width*DeltaV))
+    return np.sqrt(DLsquared)
+
+def estimate_MHImax(z, sigma, RMS_chan, DeltaV, chan_width=(1500*u.MHz/8192).to_value(u.Hz)):
+    C = 2.92*10**-4
+    RMS_chan = (RMS_chan/1000)
+    D_L = cosmo.luminosity_distance(z).to_value(u.Mpc)
+    MHImax = (sigma*RMS_chan*np.sqrt(chan_width*DeltaV)*D_L**2)/(np.sqrt(1+z)*C)
+    return MHImax
+    
+def Vmax_correct(catalog_file, sigma=6, RMS=0.1):
+    catalog = np.load(catalog_file)
+    Dsurvey = np.nanmax(catalog[6]) # max survey distance
+    W50_broad = gauss.W50_broadened(W50=catalog[3])
+    #chan_width = (1500*u.MHz/8192).to_value(u.Hz)
+    S21, D = int_S21(MHI=catalog[0], z=catalog[8])
+    solidang = solid_angle(dec1=np.min(catalog[5]), dec2=np.max(catalog[5]), ra1=np.min(catalog[4]), ra2=np.max(catalog[4]))
+    #print("solid angle is ", solidang)
+    RMS = RMS/1000
+    S21lim = S21_th(W50=W50_broad, RMS=RMS, sigma=sigma)
+    #S21lim = S21th_ALFALFA(W50=W50_broad, SNR=6.5)
     Dmax = D*np.sqrt(S21/S21lim)
-    Vmax = VolumeFromDist(Dmax, solidang)
-    return Vmax
+    Dmax[Dmax>Dsurvey]=Dsurvey
+    #Dmax = estimate_DLmax(MHI=catalog[0], z=catalog[8], sigma=sigma, RMS_chan=RMS, chan_width=chan_width, DeltaV=W50_broad)
+    Vmax = VolumeFromDist(Dmax, solidang=solidang)
+    return Vmax, catalog[0]
+    
+# def Vmax_correct(MHI, z, RMS, sigma, W50, solidang):
+#     S21, D_L = int_S21(MHI, z)
+#     D = cosmo.comoving_distance(z).to_value(u.Mpc)
+#     W50_broad = gauss.W50_broadened(W50)
+#     SNR = SNR_int(z, MHI, DeltaV=W50_broad, RMS_chan=RMS)
+#     S21lim = (RMS/1000)*sigma*48
+#     #S21lim = S21th_ALFALFA(W50_broad, SNR=6)
+#     Dmax = D*np.sqrt(S21/S21lim)
+#     Vmax = VolumeFromDist(Dmax, solidang)
+#     return Vmax
 
 def VHI_polyFit(MHI, dtype=np.float32):
     '''Polynomial Fit for rotational velocity from Spekkens&Lewis: https://www.overleaf.com/project/5e378eb163ee6f0001cc9a7f'''
@@ -139,20 +214,104 @@ def VHI_polyFit(MHI, dtype=np.float32):
 def estimate_W50(Vrot, i, broaden=True, thermal_FWHM=10, dtype=np.float32):
     '''Get W50 from rotational velocity'''
     W50 = Vrot*2*np.sin(i)
-    thermal_FWHM = np.array(thermal_FWHM, dtype=dtype)
-    # Apply thermal broadening - estimating convolution by Gaussian, add in quadrature
-    if broaden==True: 
-        W50 = np.sqrt(W50**2 + thermal_FWHM**2) # 10 u.km/u.s
+    # thermal_FWHM = np.array(thermal_FWHM, dtype=dtype)
+    # # Apply thermal broadening - estimating convolution by Gaussian, add in quadrature
+    # if broaden==True: 
+    #     W50 = np.sqrt(W50**2 + thermal_FWHM**2) # 10 u.km/u.s
     return W50
 
-def SNR_int(z, MHI, DeltaV, chan_width, RMS_chan, cosmo=cosmo_P2018):
-    '''The integrated signal-to-noise from rest-frame velocity widths
-       Using Equation 156 from https://arxiv.org/pdf/1705.04210'''
-    
-    D_L = cosmo.luminosity_distance(z).to_value(u.Mpc)
-    C = 2.92*10**-4
-    return C*(MHI/(RMS_chan*D_L**2))*np.sqrt((1+z)/(chan_width*DeltaV))
+def S21th_ALFALFA(W50, SNR):
+    S21_th = np.zeros(len(W50))
+    mask = W50 < 200
+    # S21_th[mask] =  0.15 * SNR[mask] * np.sqrt(W50[mask]/200) 
+    # S21_th[~mask] = 0.15 * SNR[~mask] * (W50[~mask]/200)
+    S21_th[mask] =  0.15 * SNR * np.sqrt(W50[mask]/200) 
+    S21_th[~mask] = 0.15 * SNR * (W50[~mask]/200)
+    return S21_th
 
+def S21_th(W50, RMS, sigma, chan_kms=48): 
+    S21_th = sigma * RMS * np.sqrt(W50 * chan_kms)
+    # S21_th = np.zeros(len(W50))
+    # mask = W50 < 48
+    # S21_th[mask] = sigma * RMS * np.sqrt(W50[mask] * chan_kms)
+    # S21_th[~mask] = sigma * RMS * (W50[~mask] * chan_kms)
+    return S21_th
+
+########################## ALFALFA Functions ###########################
+
+def ALF_boundaries(ra_deg, dec_deg):
+    ra_hour = Angle(ra_deg, unit=u.deg).hour
+
+    # Handle RA wrap-around (22h → 24h and 0h → 3h)
+    def in_ra_range(ra, ra_min, ra_max):
+        if ra_min < ra_max:
+            return (ra >= ra_min) & (ra <= ra_max)
+        else:
+            # Wraps around 0h
+            return (ra >= ra_min) | (ra <= ra_max)
+
+    # Apply Dec + RA cuts for each region (from Jones+2018 Table D1 and D2)
+    mask = (
+        # Spring
+        ((dec_deg >= 0) & (dec_deg < 16)  & in_ra_range(ra_hour, 7.7, 16.5)) |
+        ((dec_deg >= 16) & (dec_deg < 18)  & in_ra_range(ra_hour, 7.7, 16.0)) |
+        ((dec_deg >= 18) & (dec_deg < 20) & in_ra_range(ra_hour, 8.7, 15.4)) |
+        ((dec_deg >= 20) & (dec_deg < 24) & in_ra_range(ra_hour, 9.4, 15.4)) |
+        ((dec_deg >= 24) & (dec_deg <= 30) & in_ra_range(ra_hour, 7.6, 16.5)) | 
+        ((dec_deg >= 30) & (dec_deg <= 32) & in_ra_range(ra_hour, 8.5, 16.0)) | 
+        ((dec_deg >= 32) & (dec_deg <= 36) & in_ra_range(ra_hour, 9.5, 15.5)) | 
+        # Fall
+        ((dec_deg >= 0) & (dec_deg < 2)  & in_ra_range(ra_hour, 22.0, 3.0)) |
+        ((dec_deg >= 2) & (dec_deg < 6)  & in_ra_range(ra_hour, 22.5, 3.0)) |
+        ((dec_deg >= 6) & (dec_deg < 10) & in_ra_range(ra_hour, 22.0, 3.0)) |
+        ((dec_deg >= 10) & (dec_deg < 14) & in_ra_range(ra_hour, 22.0, 2.5)) |
+        ((dec_deg >= 14) & (dec_deg <= 36) & in_ra_range(ra_hour, 22.0, 3.0))
+    )
+
+    return mask
+
+def ALF_completeness(S21, W50, C=50):
+    logS21 = np.log10(S21)
+    logW = np.log10(W50)
+
+    mask = np.zeros_like(S21, dtype=bool)
+    low = logW < 2.5
+    high = ~low
+
+    if C==50:
+        mask[low]  = logS21[low]  > (0.5 * logW[low]  - 1.170)
+        mask[high] = logS21[high] > (1.0 * logW[high] - 2.420)
+
+    if C==90:
+        mask[low]  = logS21[low]  > (0.5 * logW[low]  - 1.14)
+        mask[high] = logS21[high] > (1.0 * logW[high] - 2.39)
+    return mask
+
+def S21th_ALFALFA(W50, SNR):
+    S21_th = np.zeros(len(W50))
+    mask = W50 < 200
+    # S21_th[mask] =  0.15 * SNR[mask] * np.sqrt(W50[mask]/200) 
+    # S21_th[~mask] = 0.15 * SNR[~mask] * (W50[~mask]/200)
+    S21_th[mask] =  0.15 * SNR * np.sqrt(W50[mask]/200) 
+    S21_th[~mask] = 0.15 * SNR * (W50[~mask]/200)
+    return S21_th
+    
+def Vmax_ALF(alf_fl, solidang=(7000*u.deg**2).to_value(u.sr)):
+    alf_cat = np.load(alf_fl)
+    #print("solid angle is ", solidang)
+    #print("alf catalog shape ", alf_cat.shape)
+    S21 = alf_cat[7] #Jy*km*s-1
+    SNR = alf_cat[2]
+    W50 = alf_cat[3]
+    MHI = alf_cat[0]
+    #print("S21 min/max:", np.nanmin(S21), np.nanmedian(S21), np.nanmax(S21))
+    #print("MHI is ", MHI)
+    D = alf_cat[6]
+    S21lim = S21th_ALFALFA(W50, SNR=6.5)
+    #print(S21lim)
+    Dmax = D*np.sqrt(S21/S21lim)
+    Vmax = VolumeFromDist(Dmax, solidang)
+    return Vmax, MHI
 
 ########################## Unit conversions ############################
 

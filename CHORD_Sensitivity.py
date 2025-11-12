@@ -12,6 +12,11 @@ eff=0.5
 Aeff=eff*(np.pi*(D/2)**2) * u.m**2
 #SEFD=9*u.Jy 
 
+def native_freso(f_low=0, f_high=1500):
+    resolution = 1500 / 8192
+    nchans = int((f_high - f_low) / resolution)
+    return np.linspace(f_low, f_high, nchans)
+
 def beam_size(waveln=0.21, Bmax=(8.5*22)):
     return 1.029*waveln/Bmax
 
@@ -48,7 +53,7 @@ def time2RMS(days, decl, PB=True, nu=183*u.kHz, N=512):
     tau = dwell * days # u.s
     return getRMS(tau, nu, N)
 
-#def estimateS21(catalog_fl, flname):
+#def Equal_Depth_Survey(catalog, RMS)
 
 
 
@@ -87,8 +92,8 @@ def noise_cuts(catalog_fl, bandwidth, obs_length, nstrips, sigma=5, flname='', f
 
     return np.log10(MHI_masked) 
 
-noise_cuts(catalog_fl="catalogs_output/VolLim_20to60deg_Dmax200.npy", bandwidth=38, obs_length=5*u.year, nstrips=20,
-           flname="catalogs_output/Sflux_20to60deg_Dmax200.npy")
+#noise_cuts(catalog_fl="catalogs_output/VolLim_20to60deg_Dmax200.npy", bandwidth=38, obs_length=5*u.year, nstrips=20,
+#           flname="catalogs_output/Sflux_20to60deg_Dmax200.npy")
 
 # noise_cuts(catalog_fl="catalogs_output/VolLim_20to60deg_Dmax500.npy", bandwidth=38, obs_length=5*u.year, nstrips=20,
 #            flname="catalogs_output/Sflux_20to60deg_Dmax500.npy")

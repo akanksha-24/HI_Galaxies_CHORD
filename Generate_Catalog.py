@@ -5,7 +5,7 @@ import numpy as np
 import time
 import pandas as pd
 import Plotting as plot
-#from mpi4py import MPI
+from mpi4py import MPI
 import glob
 import os
 import re
@@ -231,12 +231,18 @@ def LoadMockALFALFA(datafile, outfile, changeVelocity=False, Dist_range=None, RA
     np.save(outfile, catalog)
 
 
-def LoadALFALFA(alftable, flsave):
+def LoadALFALFA(alftable='/Users/akankshabij/Documents/PhD/Data/ALFALFA/a100.code12.table2.190808.csv',
+                 flsave='catalogs_output/ALFALFA_a100_50complete.npy'):
     alf = pd.read_table(alftable, delimiter=',')
     # Select relevant source:
     alf = alf[(alf['HIcode'])==1]
-    alf = alf[(alf['Vhelio'])<15000]
+    alf = alf[(alf['Vhelio'])<=15000]
     alf = alf[(alf['Vhelio'])>0]
+    alf = alf[np.log10(alf['W50'])>=1.2]
+    alf = alf[alf['SNR']>=6.5]
+    alf = alf[gf.ALF_boundaries(ra_deg=alf['RAdeg_HI'], dec_deg=alf['DECdeg_HI'])]
+    alf = alf[gf.ALF_completeness(S21=alf['HIflux'], W50=alf['W50'], C=50)]
+    print(len(alf))
 
     lg_MHI = (alf['logMH']) # log(solMass)
     W50 = (alf['W50']).astype(float) # u.km/u.s
@@ -247,7 +253,7 @@ def LoadALFALFA(alftable, flsave):
     RA = (alf['RAdeg_HI']).astype(float)
     Dec = (alf['DECdeg_HI']).astype(float)
 
-    samples = np.column_stack([10**lg_MHI, Vhelio, SNR, W50, RA, Dec, Dist, S21])
+    samples = np.asarray([10**lg_MHI, Vhelio, SNR, W50, RA, Dec, Dist, S21])
     np.save(flsave, samples)
 
 def load_catalogParams(catalog_file):
@@ -263,10 +269,11 @@ def load_catalogParams(catalog_file):
     z = cat[8]
     return MHI, Vrot, i, W_50, ra, dec, D, Vol, z 
 
-#if __name__ == "__main__":
-    #Gen_Catalog(zmax=0.1, npt=1000, dec1=20, dec2=80, Fluxlim=False, flname='catalogs_output/VolLim_20to60deg_zmax0p1')
-    #Gen_Catalog(zmin=0.4, zmax=1, npt=10000, dec1=20, dec2=80, Fluxlim=False, SNRint=True, sigma_int=6, RMS=0.2,
-    #            flname='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_sigmaint2')
+if __name__ == "__main__":
+    #LoadALFALFA()
+    #Gen_Catalog(zmax=0.2, npt=30, dec1=20, dec2=80, Fluxlim=False, flname='catalogs_output/VolLim_20to80deg_zmax0p3', dtype=np.float64)
+    Gen_Catalog(zmin=0.4, zmax=1, npt=10000, dec1=20, dec2=80, Fluxlim=False, MHImin=9, MHImax=12,
+                flname='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_MHI9to12.npy')
     # LoadMockALFALFA('../ALFALFA_Mock_Brooks/mock_whole_sky_df', changeVelocity=False, 
     #                 Dist_range=[0,200], Dec_range=[20,80], 
     #                 outfile='catalogs_output/MockAlf_D200_Dec20to80.npy')
