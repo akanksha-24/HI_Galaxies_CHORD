@@ -103,7 +103,7 @@ def MHI_Counts(catalog_fl, n_bins=30, label='', color='', hatch='', bins=None, a
     MHI = catalog[0]
     if ax is None:
         plt.figure(figsize=[5,4], dpi=300)
-        plt.hist(np.log10(MHI), bins=n_bins, histtype='step', label=label, color=color, hatch=hatch, linewidth=1.5)
+        plt.hist(np.log10(MHI), bins=n_bins, histtype='step', linewidth=1.5)
         plt.savefig(figname)
     else:
         if bins is None:
