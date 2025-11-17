@@ -9,24 +9,10 @@ from scipy.interpolate import interp1d
 import Gaussian_Estimate as gauss
 from astropy.coordinates import Angle
 
-# phi_s=6.58e-3
-# M_s=10**9.86
-# alpha=-1.30
-
-#HIMF Schechter Parameters from Jones+ 2018:
+# Default is Jones 2018
 phi_s=4.5e-3
 M_s=10**9.94 
 alpha=-1.25
-
-# HIMF & HIWF Schechter Parameters from Oman 2021 alpha.100 + all uncertainties:
-# phi_s=10**(-2.26)
-# M_s=10**9.92 
-# alpha=-1.29
-
-# phi_sW=10**(-1.67)
-# W_s=10**(307)
-# alpha_W=-0.63
-# beta_W=2.0
 
 MHI_grid = np.logspace(5,11,100000)
 
@@ -35,6 +21,37 @@ C21 = (2.356 * 10**5) * u.solMass * u.Mpc**-2 * (u.Jy*u.km/u.s)**-1
 
 def mid_bin(var):
     return (var[1:] + var[:-1])/2
+
+############################# HIMFs #######################################################
+def HIMF_Jones2018(MHI=MHI_grid):
+    #HIMF Schechter Parameters from Jones+ 2018:
+    phi_s=4.5e-3
+    M_s=10**9.94 
+    alpha=-1.25
+    HIMF = schechter_fit_lg(MHI, phi_s=phi_s, M_s=M_s, alpha=alpha)
+    return HIMF
+
+def HIMF_Oman2021(MHI=MHI_grid):
+    # HIMF & HIWF Schechter Parameters from Oman 2021 alpha.100 + all uncertainties:
+    phi_s=10**(-2.26)
+    M_s=10**9.92 
+    alpha=-1.29
+
+    phi_sW=10**(-1.67)
+    W_s=10**(307)
+    alpha_W=-0.63
+    beta_W=2.0
+    HIMF = schechter_fit_lg(MHI, phi_s=phi_s, M_s=M_s, alpha=alpha)
+    return HIMF
+
+def HIMF_Ma2024(MHI=MHI_grid):
+    #HIMF Schechter Parameters from FASHI Wenlin Ma+ 2024
+    phi_s=6.58e-3
+    M_s=10**9.86 
+    alpha=-1.30
+    HIMF = schechter_fit_lg(MHI, phi_s=phi_s, M_s=M_s, alpha=alpha)
+    return HIMF
+
 
 ############################# Setting Cosmology distances and volume  ######################
 
@@ -77,7 +94,7 @@ def build_z_interp(zmin=0, zmax=5.0, npt=10000, dtype=np.float32):
     return interp1d(D, z_grid, kind="linear", bounds_error=False, fill_value=(0.0, zmax))
 
 def VolumeFromDist(D, solidang=4*np.pi, Dmin=0):
-    return (1/3)*solidang*((D-Dmin)**3)
+    return (1/3)*solidang*(D**3 - Dmin**3)
 
 def Hubble_redshift(D, H0=(67.77*u.km/u.s/u.Mpc).value):
     '''Use for local universe'''
@@ -178,11 +195,16 @@ def estimate_MHImax(z, sigma, RMS_chan, DeltaV, chan_width=(1500*u.MHz/8192).to_
     
 def Vmax_correct(catalog_file, sigma=6, RMS=0.1, fromD=True):
     catalog = np.load(catalog_file)
-    Dsurvey = np.nanmax(catalog[6]) # max survey distance
+    #Dsurvey = Comoving_Dist(z=1).value #np.nanmax(catalog[6]) # max survey distance
+    #Dmin = Comoving_Dist(z=0.4).value
+    Dsurvey = np.max(catalog[6])
+    Dmin = np.nanmin(catalog[6])
+    #print("Dmin is ", Dmin)
     W50_broad = gauss.W50_broadened(W50=catalog[3])
     solidang = solid_angle(dec1=np.min(catalog[5]), dec2=np.max(catalog[5]), ra1=np.min(catalog[4]), ra2=np.max(catalog[4]))
-    zmin = np.nanmin(catalog[8])
-    print("zmin is ", zmin)
+    #print("solid ang is ", solidang)
+    # zmin = np.nanmin(catalog[8])
+    # print("zmin is ", zmin)
     if fromD:
         chan_width = (1500*u.MHz/8192).to_value(u.Hz)
         Dmax = estimate_DLmax(MHI=catalog[0], z=catalog[8], sigma=sigma, RMS_chan=RMS, chan_width=chan_width, DeltaV=W50_broad)
@@ -192,10 +214,11 @@ def Vmax_correct(catalog_file, sigma=6, RMS=0.1, fromD=True):
         S21lim = S21_th(W50=W50_broad, RMS=RMS, sigma=sigma)
         #S21lim = S21th_ALFALFA(W50=W50_broad, SNR=6.5)
         Dmax = D*np.sqrt(S21/S21lim)
-    Dmax[Dmax>Dsurvey]=Dsurvey
-    Dmax = Dmax/(1+catalog[8]) # convert from luminosity distance to comoving
-    Dmin = Comoving_Dist(zmin).value
-    Vmax = VolumeFromDist(Dmax, solidang=solidang, Dmin=Dmin)
+    Dmax_comov = Dmax / (1 + catalog[8])  # convert from luminosity distance to comoving
+    #print(Dmax_comov)
+    Dmax_comov = np.minimum(Dmax_comov, Dsurvey)  
+    Vmax = VolumeFromDist(Dmax_comov, solidang=solidang, Dmin=Dmin)
+    #print(Vmax)
     return Vmax, catalog[0]
     
 # def Vmax_correct(MHI, z, RMS, sigma, W50, solidang):
