@@ -357,7 +357,8 @@ def MHI_redshift(catalog_file, ax=None, figname='', title='', color='', label=''
 #         plt.savefig(flname+'_'+extn[i]+'.png')
 
 if __name__ == "__main__":
-    recover_HIMF(catalog_fl='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_MHI9to12.npy_rank0.npy', Vollim=True)
+    recover_HIMF(catalog_fl='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_MHI9to12.npy_rank0.npy', 
+                 Vollim=True, figname='Plots/HIMF_Volim_z0p1to1.png')
     #MHI_redshift('DetectionsVolLim_zmax0p1_5yearObs_20strips_20to80deg.npy')
     # MHI_Counts(catalog_fl='catalogs_output/Detected_VolLim_RMS0p08_20to80deg_z0p4to1_MHI9to12_new.npy',
     #           figname='Plots/z0p4to1_MHI_counts.png', bins=np.linspace(9.8,11.4,9), title='Redshift z=0.4-1')
