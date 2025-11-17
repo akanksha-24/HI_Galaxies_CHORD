@@ -105,7 +105,7 @@ def Gen_Catalog(zmax, npt, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=
                     Dmax=None, footprint=None, Fluxlim=False, sigma=1,
                     noise=1e-4, vel_width=10, MHIres=10000,
                     draw=True, fltype='npy', flname='catalog.npy',
-                    savelarge=True, dtype=np.float32, SNRint=False, sigma_int=6, RMS=0.2):
+                    savelarge=True, dtype=np.float32, SNRint=False, sigma_int=6, RMS=0.2, save=True):
     
     print("starting Job...")
     
@@ -162,9 +162,10 @@ def Gen_Catalog(zmax, npt, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=
     print("Saving samples...")
     if draw:
         rank_filename = f"{flname}_rank{rank}.npy"
-        local_arrays = np.vstack(local_samples) if len(local_samples) > 0 else np.empty((0,9), dtype=dtype)
-        print("minimum z drawn is ", np.min(local_arrays.T[8]))
-        np.save(rank_filename, local_arrays.T)
+        local_arrays = (np.vstack(local_samples) if len(local_samples) > 0 else np.empty((0,9), dtype=dtype)).T
+        #print("minimum z drawn is ", np.min(local_arrays.T[8]))
+        if save:
+            np.save(rank_filename, local_arrays)
 
     all_Narr = comm.gather(local_Narr, root=0)
 
@@ -173,9 +174,8 @@ def Gen_Catalog(zmax, npt, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=
         print(f"[Rank 0] Total runtime: {end - start:.2f} sec")
 
         N_arr = np.concatenate(all_Narr)
-        return N_arr, z
-    else:
-        return None, None
+        if draw:
+            return local_arrays
     
 def merge_rankfiles(flname, delete_rank_files=True, dtype=np.float32):
     files = glob.glob(f"{flname}_*")
@@ -281,8 +281,8 @@ def load_catalogParams(catalog_file):
     return MHI, Vrot, i, W_50, ra, dec, D, Vol, z 
 
 if __name__ == "__main__":
-    LoadALFALFA()
-    #Gen_Catalog(zmax=0.1, npt=10000, dec1=20, dec2=80, Fluxlim=False, flname='catalogs_output/VolLim_20to60deg_zmax0p1', dtype=np.float64)
+    #LoadALFALFA()
+    Gen_Catalog(zmax=0.8, npt=100000, dec1=20, dec2=80, Fluxlim=False, flname='catalogs_output/VolLim_20to80deg_zmax0p8', dtype=np.float64)
     #Gen_Catalog(zmin=0.4, zmax=1, npt=10000, dec1=20, dec2=80, Fluxlim=False, MHImin=9, MHImax=12,
     #            flname='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_MHI9to12.npy')
     # LoadMockALFALFA('../ALFALFA_Mock_Brooks/mock_whole_sky_df', changeVelocity=False, 
