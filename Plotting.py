@@ -7,6 +7,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.pyplot import cm
 import Generate_Catalog as gen
 import Forecasting as forecast
+import Gaussian_Estimate as gauss
 
 def param_distributions(catalog, n_bins=20, flname=''):
     catalog = np.load(catalog)
@@ -30,13 +31,14 @@ def MHI_VHI_polynomial(MHI=np.logspace(5,11,100000)):
     plt.savefig('MHI_VHI.png')
     plt.show()
 
-def recover_HIMF(catalog_fl, Vollim=False, mask_fl='', RMS=0.1, sigma=6, nbins=30, marker='.', figname='', zmin=0,
-                  MHI_grid=gf.MHI_grid, ax=None, color='', label='', ALF=False, bins=None, count_min=10):
-    HIMF_lg = gf.schechter_fit_lg(MHI=MHI_grid)
+def recover_HIMF(catalog_fl, Vollim=False, mask_fl='', RMS=0.1, sigma=6, nbins=30, marker='.', figname='',
+                  MHI_grid=gf.MHI_grid, ax=None, color='', label='', ALF=False, bins=None, count_min=10, fromD=True):
+    JonesHIMF = gf.HIMF_Jones2018(MHI=MHI_grid)
+    MaHIMF = gf.HIMF_Ma2024(MHI=MHI_grid)
     
     if Vollim:
         MHI, _, _, _, _, _, _, Vol, _ = gen.load_catalogParams(catalog_file=catalog_fl)
-        Vmax = np.max(Vol)
+        Vmax = np.max(Vol) - np.min(Vol)
         if bins is None:
             counts, bins = np.histogram(np.log10(MHI), bins=nbins)
         else:
@@ -48,7 +50,7 @@ def recover_HIMF(catalog_fl, Vollim=False, mask_fl='', RMS=0.1, sigma=6, nbins=3
         if ALF:
             Vmax, MHI = gf.Vmax_ALF(alf_fl=catalog_fl)
         else:
-            Vmax, MHI = gf.Vmax_correct(catalog_file=catalog_fl, sigma=sigma, RMS=RMS)
+            Vmax, MHI = gf.Vmax_correct(catalog_file=catalog_fl, sigma=sigma, RMS=RMS, fromD=fromD)
         if bins is None:
             counts_Vcorr, bins = np.histogram(np.log10(MHI), bins=nbins, weights=1/Vmax)
         else:
@@ -61,8 +63,8 @@ def recover_HIMF(catalog_fl, Vollim=False, mask_fl='', RMS=0.1, sigma=6, nbins=3
         
     bin_centers = gf.mid_bin(bins)
     if ax is None:
-        plt.figure(figsize=[5,3],dpi=200)
-        plt.plot(np.log10(MHI_grid), np.log10(HIMF_lg), label='HIMF - drawn from, Jones2018') # HIMF
+        plt.figure(figsize=[4.5,3],dpi=300)
+        plt.plot(np.log10(MHI_grid), np.log10(JonesHIMF), label='HIMF - drawn from, Jones2018') # HIMF
         plt.scatter(bin_centers, np.log10(phi), s=8, label='HIMF - recovered', color='black') # from sample
         plt.ylabel('$\phi(M_{HI})$')
         plt.xlabel('log(M$_{HI}$/M$_{\odot}$)')
@@ -71,7 +73,8 @@ def recover_HIMF(catalog_fl, Vollim=False, mask_fl='', RMS=0.1, sigma=6, nbins=3
         plt.savefig(figname)
         #plt.show()
     else:
-        ax.plot(np.log10(MHI_grid), HIMF_lg, label='Jones+2018', color='darkgray', linewidth=1, linestyle='--') # HIMF
+        ax.plot(np.log10(MHI_grid), JonesHIMF, label='Jones+2018', color='gray', linewidth=1, linestyle='--') # HIMF
+        ax.plot(np.log10(MHI_grid), MaHIMF, label='Ma+2024', color='purple', linewidth=1, linestyle=':') # HIMF
         ax.scatter(bin_centers, phi, s=8, label=label, color=color, marker=marker) # from sample
         ax.set_yscale('log')
         return (len(MHI))
@@ -98,18 +101,30 @@ def S21_W50(catalog_fl):
     plt.legend()
     plt.savefig('Plots/S21_W50.png')
 
-def MHI_Counts(catalog_fl, n_bins=30, label='', color='', hatch='', bins=None, ax=None, figname=''):
+def MHI_Counts(catalog_fl, n_bins=30, label='', color='', hatch='', bins=None, ax=None, figname='', title=''):
     catalog = np.load(catalog_fl)
     MHI = catalog[0]
+    counts = len(MHI)
     if ax is None:
         plt.figure(figsize=[5,4], dpi=300)
-        plt.hist(np.log10(MHI), bins=n_bins, histtype='step', linewidth=1.5)
+        if bins is None:
+            plt.hist(np.log10(MHI), bins=n_bins, histtype='step', linewidth=1.5, label=f' Total: {counts}')
+        else:
+            plt.hist(np.log10(MHI), bins=bins, histtype='step', linewidth=1.5, label=f' Total: {counts}')
+        plt.yscale('log')
+        plt.ylabel('Counts')
+        plt.xlabel('log($M_{HI}h^{2}_{70}/M_{\odot}$)')
+        plt.legend()
+        plt.grid(True, linewidth=0.4)
+        plt.title(title)
+        plt.tight_layout()
         plt.savefig(figname)
     else:
+        counts = len(MHI)
         if bins is None:
-            ax.hist(np.log10(MHI), bins=n_bins, histtype='step', label=label, color=color, hatch=hatch, linewidth=1.5)
+            ax.hist(np.log10(MHI), bins=n_bins, histtype='step', label=label+f"{counts}", color=color, hatch=hatch, linewidth=1.5)
         else:
-            ax.hist(np.log10(MHI), bins=bins, histtype='step', label=label, color=color, hatch=hatch, linewidth=1.5)
+            ax.hist(np.log10(MHI), bins=bins, histtype='step', label=label+f"{counts}", color=color, hatch=hatch, linewidth=1.5)
         ax.set_yscale('log')
 
 def dndz(catalog=None, N=None, z=None, flname='', compareHans=''):
@@ -307,6 +322,24 @@ def W50z_Plane(RMS=0.1, sigma=6):
     plt.savefig('Plots/W50z_Plane.png')
     plt.show()
 
+def MHI_redshift(catalog_file, ax=None, figname='', title='', color='', label=''):
+    catalog = np.load(catalog_file)
+    MHI = catalog[0]
+    z = catalog[8]
+    W50 = catalog[3]
+    W50_broad = gauss.W50_broadened(W50)
+    if ax==None:
+        plt.figure(figsize=[5,4], dpi=300)
+        sc = plt.scatter(z, np.log10(MHI), c=np.log10(W50_broad), s=2, alpha=0.5)
+        plt.colorbar(sc, label='log(W50/km s$^{-1}$)')
+        plt.xlabel('Redshift z')
+        plt.ylabel('log($M_{HI}$/$M_{\odot}$)')
+        plt.title()
+        plt.savefig(figname)
+    else:
+        ax.scatter(z, np.log10(MHI), color=color, label=label, s=5) #s=2)# alpha=0.5)
+
+
 
 # def Forecast_counts(MHI_lg, mask):
 #     catalog = np.load(catalog)
@@ -324,10 +357,12 @@ def W50z_Plane(RMS=0.1, sigma=6):
 #         plt.savefig(flname+'_'+extn[i]+'.png')
 
 if __name__ == "__main__":
-    MHI_Counts(catalog_fl='catalogs_output/Detected_VolLim_RMS0p08__20to80deg_z0p4to1_MHI9to12.npy',
-               figname='Plots/z0p4to1_MHI_counts.png')
-    recover_HIMF(catalog_fl='catalogs_output/Detected_VolLim_RMS0p08__20to80deg_z0p4to1_MHI9to12.npy', 
-                 figname='Plots/z0p4to1_HIMF.png', sigma=6, RMS=0.08, Vollim=False, zmin=0.4)
+    recover_HIMF(catalog_fl='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_MHI9to12.npy_rank0.npy', Vollim=True)
+    #MHI_redshift('DetectionsVolLim_zmax0p1_5yearObs_20strips_20to80deg.npy')
+    # MHI_Counts(catalog_fl='catalogs_output/Detected_VolLim_RMS0p08_20to80deg_z0p4to1_MHI9to12_new.npy',
+    #           figname='Plots/z0p4to1_MHI_counts.png', bins=np.linspace(9.8,11.4,9), title='Redshift z=0.4-1')
+    # recover_HIMF(catalog_fl='catalogs_output/Detected_VolLim_RMS0p08_20to80deg_z0p4to1_MHI9to12_new.npy',
+    #              figname='Plots/z0p4to1_HIMF.png', sigma=6, RMS=0.08, Vollim=False, count_min=10, nbins=5)
     #W50z_Plane(RMS=)
     #S21_W50(catalog_fl='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy')
     #recover_HIMF(catalog_fl='DetectionsVolLim_zmax0p1_fromRMS0p1_20to80deg.npy', sigma=6, RMS=0.1, Vollim=False)
