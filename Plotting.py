@@ -32,44 +32,75 @@ def MHI_VHI_polynomial(MHI=np.logspace(5,11,100000)):
     plt.show()
 
 def recover_HIMF(catalog_fl, Vollim=False, mask_fl='', RMS=0.1, sigma=6, nbins=30, marker='.', figname='',
-                  MHI_grid=gf.MHI_grid, ax=None, color='', label='', ALF=False, bins=None, count_min=10, fromD=True):
+                  MHI_grid=gf.MHI_grid, ax=None, color='', label='', ALF=False, bins=None, count_min=10, fromD=True,
+                  plotWidths=False, title='', mockAlf=False):
     JonesHIMF = gf.HIMF_Jones2018(MHI=MHI_grid)
     MaHIMF = gf.HIMF_Ma2024(MHI=MHI_grid)
+    W50_grid, OmanHIWF, HIWF_Schec = gf.Oman2021_HIWF()
     
     if Vollim:
-        MHI, _, _, _, _, _, _, Vol, _ = gen.load_catalogParams(catalog_file=catalog_fl)
+        MHI, _, _, W50, _, _, _, Vol, _ = gen.load_catalogParams(catalog_file=catalog_fl)
+        W50_broad = gauss.W50_broadened(W50)
         Vmax = np.max(Vol) - np.min(Vol)
         if bins is None:
             counts, bins = np.histogram(np.log10(MHI), bins=nbins)
+            W50_counts, W50_bins = np.histogram(np.log10(W50_broad), bins=nbins)
         else:
             counts, bins = np.histogram(np.log10(MHI), bins=bins)
+            W50_counts, W50_bins = np.histogram(np.log10(W50_broad), bins=bins)
         binwidth = (bins[1:])-(bins[:-1])
         phi = counts/(Vmax*binwidth)
 
+        W50_binwidth = (W50_bins[1:])-(W50_bins[:-1])
+        W50_phi = W50_counts/(Vmax*W50_binwidth)
+
     else:
         if ALF:
-            Vmax, MHI = gf.Vmax_ALF(alf_fl=catalog_fl)
+            Vmax, MHI, W50 = gf.Vmax_ALF(alf_fl=catalog_fl)
+        elif mockAlf:
+            Vmax, MHI, W50 = gf.Vmax_correct(catalog_file=catalog_fl, sigma=sigma, RMS=RMS, fromD=False, mockAlf=mockAlf)
         else:
-            Vmax, MHI = gf.Vmax_correct(catalog_file=catalog_fl, sigma=sigma, RMS=RMS, fromD=fromD)
+            Vmax, MHI, W50 = gf.Vmax_correct(catalog_file=catalog_fl, sigma=sigma, RMS=RMS, fromD=fromD)
         if bins is None:
             counts_Vcorr, bins = np.histogram(np.log10(MHI), bins=nbins, weights=1/Vmax)
+            counts_W50_Vcorr, W50_bins = np.histogram(np.log10(W50), bins=nbins, weights=1/Vmax)
         else:
             counts_Vcorr, bins = np.histogram(np.log10(MHI), bins=bins, weights=1/Vmax)
+            counts_W50_Vcorr, W50_bins = np.histogram(np.log10(W50), bins=bins, weights=1/Vmax)
         counts, bins = np.histogram(np.log10(MHI), bins=bins)
         binwidth = (bins[1:])-(bins[:-1])
         phi = counts_Vcorr/(binwidth)
+
+        W50_counts, W50_bins = np.histogram(np.log10(W50), bins=W50_bins)
+        print("W50 is ", W50_bins)
+        W50_binwidth = (W50_bins[1:])-(W50_bins[:-1])
+        print("W50_binwidth is ", W50_binwidth)
+        W50_phi = counts_W50_Vcorr/(W50_binwidth)
     
     phi[counts<count_min] = np.nan
+    W50_phi[W50_counts<count_min] = np.nan
         
     bin_centers = gf.mid_bin(bins)
+    W50_bin_centers = gf.mid_bin(W50_bins)
     if ax is None:
-        plt.figure(figsize=[4.5,3],dpi=300)
-        plt.plot(np.log10(MHI_grid), np.log10(JonesHIMF), label='HIMF - drawn from, Jones2018') # HIMF
-        plt.scatter(bin_centers, np.log10(phi), s=8, label='HIMF - recovered', color='black') # from sample
-        plt.ylabel('$\phi(M_{HI})$')
-        plt.xlabel('log(M$_{HI}$/M$_{\odot}$)')
+        plt.figure(figsize=[6,4],dpi=300)
+        if plotWidths==False:
+            plt.plot(np.log10(MHI_grid), np.log10(JonesHIMF), label='HIMF - drawn from, Jones2018') # HIMF
+            plt.scatter(bin_centers, np.log10(phi), s=8, label='HIMF - recovered', color='black') # from sample
+            plt.ylabel('$\phi(M_{HI})$')
+            plt.xlabel('log(M$_{HI}$/M$_{\odot}$)')
+        else:
+            plt.plot(W50_grid, OmanHIWF, label='Oman+ 2021') # HIMF
+            plt.plot(W50_grid, HIWF_Schec, label='Schechter Fit')
+            plt.scatter(10**W50_bin_centers, W50_phi, s=8, label='HIWF - recovered', color='black') # from sample
+            plt.ylabel('$\phi(w_{50})$ [$h_{70}^{3}$ Mpc$^{-3}$ dex$^{-1}$]')
+            plt.xlabel('$w_{50}$ (km s$^{-1}$)')
+            plt.xscale('log')
+            plt.yscale('log')
+        plt.title(title)
         plt.legend()
         plt.tight_layout()
+        plt.grid(True, linewidth=0.4)
         plt.savefig(figname)
         #plt.show()
     else:
@@ -339,6 +370,12 @@ def MHI_redshift(catalog_file, ax=None, figname='', title='', color='', label=''
     else:
         ax.scatter(z, np.log10(MHI), color=color, label=label, s=5) #s=2)# alpha=0.5)
 
+def HIWF():
+    W50, HIWF = gf.Oman2021_HIWF()
+    plt.figure()
+    plt.plot(np.log10(W50), np.log10(HIWF))
+    plt.show()
+
 
 
 # def Forecast_counts(MHI_lg, mask):
@@ -357,8 +394,21 @@ def MHI_redshift(catalog_file, ax=None, figname='', title='', color='', label=''
 #         plt.savefig(flname+'_'+extn[i]+'.png')
 
 if __name__ == "__main__":
-    recover_HIMF(catalog_fl='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_MHI9to12.npy_rank0.npy', 
-                 Vollim=True, figname='Plots/HIMF_Volim_z0p1to1.png')
+    # recover_HIMF(catalog_fl='catalogs_output/MockAlf_FullSkyD200_Dec20to80_ChangeVelocity.npy', ALF=False, Vollim=False, 
+    #              title='HIWF from mock-ALFALFA constrained sim',
+    #              plotWidths=True, nbins=np.linspace(1,3,21), figname='Plots/HIWF_mockALF_changeVel.png', count_min=0)
+    # recover_HIMF(catalog_fl='catalogs_output/ALFALFA_a100_C90.npy', ALF=True, Vollim=False, 
+    #              title='HIWF from ALFALFA $\\alpha$.100',
+    #              plotWidths=True, nbins=np.linspace(1,3,21), figname='Plots/HIWF_ALFALFA.png', count_min=0)
+    # recover_HIMF(catalog_fl='catalogs_output/Detected_RMS0p1_VolLim_20to80deg_Dmax200.npy', ALF=False, Vollim=False, 
+    #              title='HIWF from flux-limited Catalog, Detected at RMS=0.1 mJy',
+    #              plotWidths=False, nbins=20, figname='Plots/HIMF_fluxLim_RMS0p1_z0p1.png', count_min=0)
+    # recover_HIMF(catalog_fl='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', ALF=False, Vollim=True, 
+    #              title='HIWF from Volume-limited Catalog',
+    #              plotWidths=True, bins=np.linspace(1,3,21), figname='Plots/HIWF_VolLim_z0p1.png', count_min=0)
+    #HIWF()
+    #recover_HIMF(catalog_fl='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_MHI9to12.npy_rank0.npy', 
+    #             Vollim=True, figname='Plots/HIMF_Volim_z0p4to1.png')
     #MHI_redshift('DetectionsVolLim_zmax0p1_5yearObs_20strips_20to80deg.npy')
     # MHI_Counts(catalog_fl='catalogs_output/Detected_VolLim_RMS0p08_20to80deg_z0p4to1_MHI9to12_new.npy',
     #           figname='Plots/z0p4to1_MHI_counts.png', bins=np.linspace(9.8,11.4,9), title='Redshift z=0.4-1')
