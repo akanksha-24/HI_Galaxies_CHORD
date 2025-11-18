@@ -25,13 +25,16 @@ def SNRint_fromFile(catalog_file, RMS, sigma=6, plt=True, figname='', title='', 
         plot.Detection_counts_MHI(MHI=catalog[0], mask=mask, RMS=RMS, figname=figname, title=title)
     if maskFl!='':
         np.save(maskFl, catalog[:,mask])
+        print("Number of detections: ", len(catalog[0,mask]))
 
 def detections_ALFALFA(catalog_file, maskFl=''):
     catalog = np.load(catalog_file)
+    print("Total Catalog size: ", len(catalog[0]))
     W50_broad = gauss.W50_broadened(W50=catalog[3])
     S21, _ = gf.int_S21(MHI=catalog[0], z=catalog[8])
     S21_thALF = gf.S21th_ALFALFA(W50=W50_broad, SNR=6.5)
     mask = S21 > S21_thALF
+    print("Total Detections size: ", len(catalog[0,mask]))
     if maskFl!='':
         np.save(maskFl, catalog[:,mask])
     return mask
@@ -150,13 +153,14 @@ def compareCatalogs(catalog1, catalog2, RMS, sigma=6, plt=True, figname='', titl
 
 if __name__ == "__main__":
     # detections_fromObs(catalog_file='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy',
-    #                     obsyears=5, nstrips=20, maskFl='DetectionsVolLim_zmax0p1_5yearObs_20strips_20to80deg.npy')
+    #                      obsyears=5, nstrips=20, maskFl='DetectionsVolLim_zmax0p1_5yearObs_20strips_20to80deg.npy')
 #   detections_fromRMS(catalog_file='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', sigma=6, RMS=0.1, maskFl='DetectionsVolLim_zmax0p1_fromRMS0p1_20to80deg.npy')
 #    detections_ALFALFA(catalog_file='catalogs_output/VolLim_20to80deg_Dmax200_rank0.npy', maskFl='DetectionsALFALFA_20to80deg_Dmax200.npy')
+#    detections_ALFALFA(catalog_file='catalogs_output/MockAlf_D200_Dec20to80_ChangeVelocity.npy', maskFl='DetectionsALFALFA_MockSim_20to80deg_Dmax200.npy')
 #    SNRint_fromFile('catalogs_output/MockAlf_FullSky.npy', RMS=1, plt=False, maskFl='catalogs_output/maskRMS1_sigma6_MockAlf_FullSky.npy')
-    SNRint_fromFile('catalogs_output/VolLim_20to80deg_zmax0p8_rank0.npy', RMS=0.08, plt=False, 
-                    maskFl='catalogs_output/Detected_RMS0p08_VolLim_20to80deg_zmax0p8_rank0.npy')
-#   SNRint_fromFile('catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_MHI9to12.npy_rank0.npy', RMS=0.08, plt=False, 
+    SNRint_fromFile('catalogs_output/VolLim_20to80deg_zmax0p8_rank1.npy', RMS=0.08, plt=False, 
+                    maskFl='catalogs_output/Detected_RMS0p08_VolLim_20to80deg_zmax0p8_rank1.npy')
+#   SNRint_fromFile('catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_MHI9to12.npy_rank1.npy', RMS=0.08, plt=False, 
 #                  maskFl='catalogs_output/Detected_VolLim_RMS0p08_20to80deg_z0p4to1_MHI9to12_new.npy')
 #    SNRint_fromFile('catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', RMS=0.1, plt=False, maskFl='catalogs_output/DetectedRMS0p1_sigma6_VolLim_20to60deg_zmax0p1.npy')
 #     # compareCatalogs(catalog1='catalogs_output/VolLim_20to60deg_Dmax200_rank0.npy', 
