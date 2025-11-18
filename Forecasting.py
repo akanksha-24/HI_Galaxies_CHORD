@@ -56,30 +56,14 @@ def detections_fromObs(catalog_file, maskFl, obsyears, nstrips, sigma=6):
     print("RMS is ", RMS)
     detections_fromRMS(catalog_file=catalog_file, maskFl=maskFl, RMS=RMS.value, sigma=sigma)
 
-# def SNRint_varyingRMS(catalog_file, RMS, sigma=6, plot=True, figname='', title=''):
-#     from mpi4py import MPI
-#     comm = MPI.COMM_WORLD
-#     rank = comm.Get_rank()
-#     size = comm.Get_size()
-
-#     MHI, _, _, W50, _, _, _, _, z = gen.load_catalogParams(catalog_file)
-#     base, ext = os.path.splitext(catalog_file)
-#     mask, _ = SNRint_detections(MHI, W50, z, RMS=RMS, sigma=sigma)
-
-#     plt.figure()
-#     for i in range(len(RMS)):
-        
-#         np.save(base+f'_mask{RMS[i]}.npy', mask)
-#         counts = MHI[mask].shape[0]
-#         print("counts is ", counts)
-#         plt.hist(np.log10(MHI[mask]), bins=30, histtype='step', label=f'RMS={RMS[i]} mJy, total={counts}')
-#     plt.yscale('log')
-#     plt.title(title)
-#     plt.xlabel('log(MHI)')
-#     plt.ylabel('log(Counts)')
-#     plt.legend()
-#     plt.savefig(figname)
-
+def apply_ALFboundaries(catalog_file, maskFl):
+    catalog = np.loag(catalog_file)
+    ra_deg = catalog[4]
+    dec_deg = catalog[5]
+    mask = gf.ALF_boundaries(ra_deg=ra_deg, dec_deg=dec_deg)
+    if maskFl!='':
+        np.save(maskFl, catalog[:,mask])
+    return mask
 
 def SNRint_varyingRMS(catalog_file, RMS, sigma=6, plot=True, figname='', title=''):
     comm = MPI.COMM_WORLD
@@ -150,7 +134,6 @@ def compareCatalogs(catalog1, catalog2, RMS, sigma=6, plt=True, figname='', titl
         #plot.Detection_compareCats(MHI1=MHI1[mask1], MHI2=MHI2[mask2], figname=figname, title=title)
         plot.Detection_compare_Decs(MHI1[mask1], MHI2[mask2], Dec1=Dec1[mask1], Dec2=Dec2[mask2], figname=figname, title=title)
 
-
 if __name__ == "__main__":
     # detections_fromObs(catalog_file='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy',
     #                      obsyears=5, nstrips=20, maskFl='DetectionsVolLim_zmax0p1_5yearObs_20strips_20to80deg.npy')
@@ -158,8 +141,8 @@ if __name__ == "__main__":
 #    detections_ALFALFA(catalog_file='catalogs_output/VolLim_20to80deg_Dmax200_rank0.npy', maskFl='DetectionsALFALFA_20to80deg_Dmax200.npy')
 #   detections_ALFALFA(catalog_file='catalogs_output/MockAlf_D200_Dec20to80.npy', maskFl='DetectionsALFALFA_MockSimvelocity_20to80deg_Dmax200.npy')
 #    SNRint_fromFile('catalogs_output/MockAlf_FullSky.npy', RMS=1, plt=False, maskFl='catalogs_output/maskRMS1_sigma6_MockAlf_FullSky.npy')
-    SNRint_fromFile('catalogs_output/VolLim_20to80deg_zmax0p8_rank2.npy', RMS=0.08, plt=False, 
-                    maskFl='catalogs_output/Detected_RMS0p08_VolLim_20to80deg_zmax0p8_rank2.npy')
+    SNRint_fromFile('catalogs_output/VolLim_20to80deg_zmax0p8_rank3.npy', RMS=0.08, plt=False, 
+                    maskFl='catalogs_output/Detected_RMS0p08_VolLim_20to80deg_zmax0p8_rank3.npy')
 #   SNRint_fromFile('catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_MHI9to12.npy_rank1.npy', RMS=0.08, plt=False, 
 #                  maskFl='catalogs_output/Detected_VolLim_RMS0p08_20to80deg_z0p4to1_MHI9to12_new.npy')
 #    SNRint_fromFile('catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', RMS=0.1, plt=False, maskFl='catalogs_output/DetectedRMS0p1_sigma6_VolLim_20to60deg_zmax0p1.npy')
