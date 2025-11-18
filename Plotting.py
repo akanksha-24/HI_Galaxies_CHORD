@@ -394,9 +394,9 @@ def HIWF():
 #         plt.savefig(flname+'_'+extn[i]+'.png')
 
 if __name__ == "__main__":
-    # recover_HIMF(catalog_fl='catalogs_output/MockAlf_FullSkyD200_Dec20to80_ChangeVelocity.npy', ALF=False, Vollim=False, 
-    #              title='HIWF from mock-ALFALFA constrained sim',
-    #              plotWidths=True, nbins=np.linspace(1,3,21), figname='Plots/HIWF_mockALF_changeVel.png', count_min=0)
+    recover_HIMF(catalog_fl='catalogs_output/MockAlf_FullSkyD200_Dec20to80_ChangeVelocity.npy', ALF=False, Vollim=False, 
+                  title='HIWF from mock-ALFALFA constrained sim',
+                  plotWidths=True, nbins=np.linspace(1,3,21), figname='Plots/HIWF_mockALF_changeVel.png', count_min=0)
     # recover_HIMF(catalog_fl='catalogs_output/ALFALFA_a100_C90.npy', ALF=True, Vollim=False, 
     #              title='HIWF from ALFALFA $\\alpha$.100',
     #              plotWidths=True, nbins=np.linspace(1,3,21), figname='Plots/HIWF_ALFALFA.png', count_min=0)
