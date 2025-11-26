@@ -19,6 +19,9 @@ MHI_grid = np.logspace(5,11,100000)
 #Constant for MHI calculation:
 C21 = (2.356 * 10**5) * u.solMass * u.Mpc**-2 * (u.Jy*u.km/u.s)**-1
 
+#chan_wdith 
+chan_width = ((1600/8192)*u.MHz).to_value(u.Hz)
+
 def mid_bin(var):
     return (var[1:] + var[:-1])/2
 
@@ -31,16 +34,14 @@ def HIMF_Jones2018(MHI=MHI_grid):
     HIMF = schechter_fit_lg(MHI, phi_s=phi_s, M_s=M_s, alpha=alpha)
     return HIMF
 
+#def Draw_Jones2018(MHI_MHI_grid):
+
 def HIMF_Oman2021(MHI=MHI_grid):
     # HIMF & HIWF Schechter Parameters from Oman 2021 alpha.100 + all uncertainties:
     phi_s=10**(-2.26)
     M_s=10**9.92 
     alpha=-1.29
 
-    phi_sW=10**(-1.67)
-    W_s=10**(307)
-    alpha_W=-0.63
-    beta_W=2.0
     HIMF = schechter_fit_lg(MHI, phi_s=phi_s, M_s=M_s, alpha=alpha)
     return HIMF
 
@@ -52,6 +53,16 @@ def HIMF_Ma2024(MHI=MHI_grid):
     HIMF = schechter_fit_lg(MHI, phi_s=phi_s, M_s=M_s, alpha=alpha)
     return HIMF
 
+def Oman2021_HIWF():
+    phi_sW=10**(-1.67)
+    W_s=307
+    alpha_W=-0.63
+    beta_W=2.0
+
+    W50 = np.logspace(1,3,10000)
+    HIWF  = HIWF_fit(W50=W50, phi_s=phi_sW, W_s=W_s, alpha=alpha_W, Beta=beta_W)
+    HIWF_Schec = HIWF_Schecter(W50=W50, phi_s=phi_sW, W_s=W_s, alpha=alpha_W)
+    return W50, HIWF, HIWF_Schec
 
 ############################# Setting Cosmology distances and volume  ######################
 
@@ -118,6 +129,12 @@ def solid_angle(dec1, dec2, ra1, ra2):
 
 ################################   HIMF Schechter Functions  ############################
 
+def HIWF_fit(W50, phi_s, W_s, alpha, Beta):
+    return np.log10(10)*(phi_s)*((W50/W_s)**alpha)*(np.exp(-W50/W_s)**Beta)
+
+def HIWF_Schecter(W50, phi_s, W_s, alpha):
+    return np.log10(10)*(phi_s)*((W50/W_s)**alpha)*(np.exp(-1*W50/W_s))
+
 def schechter_fit_lg(MHI=MHI_grid, phi_s=phi_s, M_s=M_s, alpha=alpha):
     return np.log(10)*(phi_s) * (MHI/M_s)**(alpha+1) * np.exp(-1*(MHI/M_s)) 
 
@@ -172,7 +189,7 @@ def int_S21Hz(MHI, z):
     S21 = MHI/(D_L**2 * 49.7)
     return S21, D_L 
 
-def SNR_int(z, MHI, DeltaV, RMS_chan, chan_width=(1500*u.MHz/8192).to_value(u.Hz)):
+def SNR_int(z, MHI, DeltaV, RMS_chan, chan_width=chan_width):
     '''The integrated signal-to-noise from rest-frame velocity widths
        Using Equation 156 from https://arxiv.org/pdf/1705.04210'''
     
@@ -180,20 +197,20 @@ def SNR_int(z, MHI, DeltaV, RMS_chan, chan_width=(1500*u.MHz/8192).to_value(u.Hz
     C = 2.92*10**-4
     return C*(MHI/(RMS_chan*D_L**2))*np.sqrt((1+z)/(chan_width*DeltaV))
     
-def estimate_DLmax(MHI, z, sigma, RMS_chan, DeltaV, chan_width=(1500*u.MHz/8192).to_value(u.Hz)):
+def estimate_DLmax(MHI, z, sigma, RMS_chan, DeltaV, chan_width=chan_width):
     C = 2.92*10**-4
     RMS_chan = (RMS_chan*u.mJy).to_value(u.Jy)
     DLsquared = C*(MHI/(RMS_chan*sigma))*np.sqrt((1+z)/(chan_width*DeltaV))
     return np.sqrt(DLsquared)
 
-def estimate_MHImax(z, sigma, RMS_chan, DeltaV, chan_width=(1500*u.MHz/8192).to_value(u.Hz)):
+def estimate_MHImax(z, sigma, RMS_chan, DeltaV, chan_width=chan_width):
     C = 2.92*10**-4
     RMS_chan = (RMS_chan*u.mJy).to_value(u.Jy)
     D_L = cosmo.luminosity_distance(z).to_value(u.Mpc)
     MHImax = (sigma*RMS_chan*np.sqrt(chan_width*DeltaV)*D_L**2)/(np.sqrt(1+z)*C)
     return MHImax
     
-def Vmax_correct(catalog_file, sigma=6, RMS=0.1, fromD=True):
+def Vmax_correct(catalog_file, sigma=6, RMS=0.1, fromD=True, mockAlf=False, solidang=None):
     catalog = np.load(catalog_file)
     #Dsurvey = Comoving_Dist(z=1).value #np.nanmax(catalog[6]) # max survey distance
     #Dmin = Comoving_Dist(z=0.4).value
@@ -201,25 +218,28 @@ def Vmax_correct(catalog_file, sigma=6, RMS=0.1, fromD=True):
     Dmin = np.nanmin(catalog[6])
     #print("Dmin is ", Dmin)
     W50_broad = gauss.W50_broadened(W50=catalog[3])
-    solidang = solid_angle(dec1=np.min(catalog[5]), dec2=np.max(catalog[5]), ra1=np.min(catalog[4]), ra2=np.max(catalog[4]))
-    #print("solid ang is ", solidang)
+    if solidang is None:
+        solidang = solid_angle(dec1=np.min(catalog[5]), dec2=np.max(catalog[5]), ra1=np.min(catalog[4]), ra2=np.max(catalog[4]))
+        print("solid ang is ", solidang)
     # zmin = np.nanmin(catalog[8])
     # print("zmin is ", zmin)
     if fromD:
         chan_width = (1500*u.MHz/8192).to_value(u.Hz)
         Dmax = estimate_DLmax(MHI=catalog[0], z=catalog[8], sigma=sigma, RMS_chan=RMS, chan_width=chan_width, DeltaV=W50_broad)
-    else:
-        RMS = (RMS*u.mJy).to_value(u.Jy)
+    if fromD==False or mockAlf:
         S21, D = int_S21(MHI=catalog[0], z=catalog[8])
-        S21lim = S21_th(W50=W50_broad, RMS=RMS, sigma=sigma)
-        #S21lim = S21th_ALFALFA(W50=W50_broad, SNR=6.5)
+        if mockAlf:
+            S21lim = S21th_ALFALFA(W50=W50_broad, SNR=6.5)
+        else:
+            RMS = (RMS*u.mJy).to_value(u.Jy)
+            S21lim = S21_th(W50=W50_broad, RMS=RMS, sigma=sigma)
         Dmax = D*np.sqrt(S21/S21lim)
     Dmax_comov = Dmax / (1 + catalog[8])  # convert from luminosity distance to comoving
     #print(Dmax_comov)
     Dmax_comov = np.minimum(Dmax_comov, Dsurvey)  
     Vmax = VolumeFromDist(Dmax_comov, solidang=solidang, Dmin=Dmin)
     #print(Vmax)
-    return Vmax, catalog[0]
+    return Vmax, catalog[0], W50_broad
     
 # def Vmax_correct(MHI, z, RMS, sigma, W50, solidang):
 #     S21, D_L = int_S21(MHI, z)
@@ -248,14 +268,14 @@ def estimate_W50(Vrot, i, broaden=True, thermal_FWHM=10, dtype=np.float32):
     #     W50 = np.sqrt(W50**2 + thermal_FWHM**2) # 10 u.km/u.s
     return W50
 
-def S21th_ALFALFA(W50, SNR):
-    S21_th = np.zeros(len(W50))
-    mask = W50 < 200
-    # S21_th[mask] =  0.15 * SNR[mask] * np.sqrt(W50[mask]/200) 
-    # S21_th[~mask] = 0.15 * SNR[~mask] * (W50[~mask]/200)
-    S21_th[mask] =  0.15 * SNR * np.sqrt(W50[mask]/200) 
-    S21_th[~mask] = 0.15 * SNR * (W50[~mask]/200)
-    return S21_th
+# def S21th_ALFALFA(W50, SNR):
+#     S21_th = np.zeros(len(W50))
+#     mask = W50 < 200
+#     # S21_th[mask] =  0.15 * SNR[mask] * np.sqrt(W50[mask]/200) 
+#     # S21_th[~mask] = 0.15 * SNR[~mask] * (W50[~mask]/200)
+#     S21_th[mask] =  0.15 * SNR * np.sqrt(W50[mask]/200) 
+#     S21_th[~mask] = 0.15 * SNR * (W50[~mask]/200)
+#     return S21_th
 
 def S21_th(W50, RMS, sigma, chan_kms=48): 
     S21_th = sigma * RMS * np.sqrt(W50 * chan_kms)
@@ -315,6 +335,16 @@ def ALF_completeness(S21, W50, C=50):
         mask[high] = logS21[high] > (1.0 * logW[high] - 2.39)
     return mask
 
+def S21th_C90(W50, SNR):
+    logW = np.log10(W50)
+    logS21 = np.zeros(len(W50))
+    low = logW < 2.5
+    high = ~low
+    logS21[low]  = (0.5 * logW[low]  - 1.170)
+    logS21[high] = (1.0 * logW[high] - 2.39)
+    S21_th = 10**(logS21)*SNR
+    return S21_th
+
 def S21th_ALFALFA(W50, SNR):
     S21_th = np.zeros(len(W50))
     mask = W50 < 200
@@ -326,20 +356,16 @@ def S21th_ALFALFA(W50, SNR):
     
 def Vmax_ALF(alf_fl, solidang=(7000*u.deg**2).to_value(u.sr)):
     alf_cat = np.load(alf_fl)
-    #print("solid angle is ", solidang)
-    #print("alf catalog shape ", alf_cat.shape)
     S21 = alf_cat[7] #Jy*km*s-1
     SNR = alf_cat[2]
     W50 = alf_cat[3]
     MHI = alf_cat[0]
-    #print("S21 min/max:", np.nanmin(S21), np.nanmedian(S21), np.nanmax(S21))
-    #print("MHI is ", MHI)
     D = alf_cat[6]
     S21lim = S21th_ALFALFA(W50, SNR=6.5)
-    #print(S21lim)
+    #S21lim = S21th_C90(W50, SNR=6.5)
     Dmax = D*np.sqrt(S21/S21lim)
-    Vmax = VolumeFromDist(Dmax, solidang)
-    return Vmax, MHI
+    Vmax = VolumeFromDist(Dmax, solidang, Dmin=0)
+    return Vmax, MHI, W50
 
 ########################## Unit conversions ############################
 
@@ -360,7 +386,17 @@ def df_dv(v, z, f_rest=1420.40575177):
     df_dv = f_obs / (v_c * (1 + v/v_c) * np.sqrt(1 - (v/v_c)**2))
     return df_dv # In units MHz / (km/s)
 
-#def W502F50(W50, z, )
+def chanwidth_vel2freq(dv, z=0, f_rest=1420.40575177):
+    '''converts velocity resolution to frequency resolution'''
+    v_c = c.c.to(u.km/u.s).value 
+    df = dv*f_rest/(v_c*(1+z)) # in units MHz
+    return df*10**6 # in units Hz
+
+def chanwidth_freq2vel(df, z=0, f_rest=1420.40575177):
+    '''converts velocity resolution to frequency resolution'''
+    v_c = c.c.to(u.km/u.s).value 
+    dv = df*v_c*(1+z)/f_rest
+    return dv # in units km/s
 
 def convert_T(obs_freq, S, b_max=22*8.5):
     '''Convert spectral flux densitities in mJy to temperatures in K'''
