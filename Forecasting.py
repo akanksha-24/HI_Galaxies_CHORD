@@ -22,6 +22,7 @@ def SNRint_fromFile(catalog_file, RMS, sigma=6, plt=True, figname='', title='', 
     catalog = np.load(catalog_file)
     if chan_width_kms!=None:
         chan_width_Hz = gf.chanwidth_vel2freq(10, f_rest=1420)
+        print("chan width in Hz is ", chan_width_Hz)
     else:
         chan_width_Hz = gf.chan_width
     mask = SNR_detections(MHI=catalog[0], W50=catalog[3], z=catalog[8], RMS=RMS, sigma=sigma, chan_width=chan_width_Hz)    
@@ -152,7 +153,7 @@ if __name__ == "__main__":
 #    detections_ALFALFA(catalog_file='catalogs_output/VolLim_20to80deg_Dmax200_MHImatchmocksim.npy_rank0.npy', maskFl='DetectionsALFALFA_Vollim_Matchsim_20to80deg_Dmax200.npy')
 #   detections_ALFALFA(catalog_file='catalogs_output/MockAlf_D200_Dec20to80_changeVelocity.npy', maskFl='DetectionsALFALFA_MockSim_changeVelocity_20to80deg_Dmax200.npy')
 #    SNRint_fromFile('catalogs_output/MockAlf_FullSky.npy', RMS=1, plt=False, maskFl='catalogs_output/maskRMS1_sigma6_MockAlf_FullSky.npy')
-   SNRint_fromFile('catalogs_output/VolLim_20to80deg_zmax0p8_rank0.npy', RMS=0.18, plt=False, chan_width_kms=48,
+   SNRint_fromFile('catalogs_output/VolLim_20to80deg_zmax0p8_rank0.npy', RMS=0.18, plt=False, chan_width_kms=5,
                   maskFl='catalogs_output/Detected1yr_RMS0p18_VolLim_20to80deg_zmax0p8_chan5kms_rank0.npy')
 #   SNRint_fromFile('catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_MHI9to12.npy_rank1.npy', RMS=0.08, plt=False, 
 #                  maskFl='catalogs_output/Detected_VolLim_RMS0p08_20to80deg_z0p4to1_MHI9to12_new.npy')
