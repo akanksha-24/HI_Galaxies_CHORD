@@ -153,8 +153,8 @@ if __name__ == "__main__":
 #    detections_ALFALFA(catalog_file='catalogs_output/VolLim_20to80deg_Dmax200_MHImatchmocksim.npy_rank0.npy', maskFl='DetectionsALFALFA_Vollim_Matchsim_20to80deg_Dmax200.npy')
 #   detections_ALFALFA(catalog_file='catalogs_output/MockAlf_D200_Dec20to80_changeVelocity.npy', maskFl='DetectionsALFALFA_MockSim_changeVelocity_20to80deg_Dmax200.npy')
 #    SNRint_fromFile('catalogs_output/MockAlf_FullSky.npy', RMS=1, plt=False, maskFl='catalogs_output/maskRMS1_sigma6_MockAlf_FullSky.npy')
-    detections_fromObs('catalogs_output/VolLim_20to80deg_zmax0p8_rank0.npy', obsyears=1, nstrips=20, chan_width_kms=5, 
-                  maskFl='catalogs_output/Detected1yr_RMS0p18_VolLim_20to80deg_zmax0p8_chan5kms_rank0.npy')
+    detections_fromObs('catalogs_output/VolLim_20to80deg_zmax0p8_rank1.npy', obsyears=1, nstrips=20, chan_width_kms=5, 
+                  maskFl='catalogs_output/Detected1yr_RMS0p18_VolLim_20to80deg_zmax0p8_chan5kms_rank1.npy')
 #   SNRint_fromFile('catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_MHI9to12.npy_rank1.npy', RMS=0.08, plt=False, 
 #                  maskFl='catalogs_output/Detected_VolLim_RMS0p08_20to80deg_z0p4to1_MHI9to12_new.npy')
 #    SNRint_fromFile('catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', RMS=0.1, plt=False, maskFl='catalogs_output/DetectedRMS0p1_sigma6_VolLim_20to60deg_zmax0p1.npy')
