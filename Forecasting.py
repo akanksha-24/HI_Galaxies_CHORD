@@ -5,7 +5,7 @@ import Plotting as plot
 import numpy as np
 import astropy.units as u
 import os
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import time
 from mpi4py import MPI
 import CHORD_Sensitivity as chord
@@ -17,11 +17,11 @@ def SNR_detections(MHI, W50, z, RMS, sigma=6, chan_width=gf.chan_width):
     mask = SNR >= sigma
     return mask
 
-def SNRint_fromFile(catalog_file, RMS, sigma=6, plt=False, figname='', title='', maskFl='', 
+def SNRint_fromFile(catalog_file, RMS, sigma=6, toplot=False, figname='', title='', maskFl='', 
                     chan_width=gf.chan_width):
     catalog = np.load(catalog_file)
     mask = SNR_detections(MHI=catalog[0], W50=catalog[3], z=catalog[8], RMS=RMS, sigma=sigma, chan_width=chan_width)    
-    if plt==True:
+    if toplot==True:
         plot.Detection_counts_MHI(MHI=catalog[0], mask=mask, RMS=RMS, figname=figname, title=title)
     if maskFl!='':
         np.save(maskFl, catalog[:,mask])
