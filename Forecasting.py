@@ -18,14 +18,9 @@ def SNR_detections(MHI, W50, z, RMS, sigma=6, chan_width=gf.chan_width):
     return mask
 
 def SNRint_fromFile(catalog_file, RMS, sigma=6, plt=True, figname='', title='', maskFl='', 
-                    chan_width_kms=None):
+                    chan_width=gf.chan_width):
     catalog = np.load(catalog_file)
-    if chan_width_kms!=None:
-        chan_width_Hz = gf.chanwidth_vel2freq(10, f_rest=1420)
-        print("chan width in Hz is ", chan_width_Hz)
-    else:
-        chan_width_Hz = gf.chan_width
-    mask = SNR_detections(MHI=catalog[0], W50=catalog[3], z=catalog[8], RMS=RMS, sigma=sigma, chan_width=chan_width_Hz)    
+    mask = SNR_detections(MHI=catalog[0], W50=catalog[3], z=catalog[8], RMS=RMS, sigma=sigma, chan_width=chan_width)    
     if plt==True:
         plot.Detection_counts_MHI(MHI=catalog[0], mask=mask, RMS=RMS, figname=figname, title=title)
     if maskFl!='':
@@ -55,11 +50,16 @@ def detections_fromRMS(catalog_file, maskFl='', RMS=0.1, sigma=6):
         np.save(maskFl, catalog[:,mask])
     return mask, S21, W50_broad
 
-def detections_fromObs(catalog_file, maskFl, obsyears, nstrips, sigma=6):
+def detections_fromObs(catalog_file, maskFl, obsyears, nstrips, sigma=6, chan_width_kms=None):
     obsdays = 365*obsyears/nstrips
-    RMS = chord.time2RMS(days=obsdays, decl=20, PB=True, nu=183*u.kHz, N=512)
+    if chan_width_kms!=None:
+        chan_width_Hz = gf.chanwidth_vel2freq(10, f_rest=1420)
+        print("chan width in Hz is ", chan_width_Hz)
+    else:
+        chan_width_Hz = gf.chan_width
+    RMS = chord.time2RMS(days=obsdays, decl=20, PB=True, nu=chan_width_Hz*u.Hz, N=512)
     print("RMS is ", RMS)
-    detections_fromRMS(catalog_file=catalog_file, maskFl=maskFl, RMS=RMS.value, sigma=sigma)
+    SNRint_fromFile(catalog_file=catalog_file, maskFl=maskFl, RMS=RMS.value, sigma=sigma, chan_width=chan_width_Hz)
 
 def apply_ALFboundaries(catalog_file, maskFl):
     catalog = np.load(catalog_file)
@@ -153,7 +153,7 @@ if __name__ == "__main__":
 #    detections_ALFALFA(catalog_file='catalogs_output/VolLim_20to80deg_Dmax200_MHImatchmocksim.npy_rank0.npy', maskFl='DetectionsALFALFA_Vollim_Matchsim_20to80deg_Dmax200.npy')
 #   detections_ALFALFA(catalog_file='catalogs_output/MockAlf_D200_Dec20to80_changeVelocity.npy', maskFl='DetectionsALFALFA_MockSim_changeVelocity_20to80deg_Dmax200.npy')
 #    SNRint_fromFile('catalogs_output/MockAlf_FullSky.npy', RMS=1, plt=False, maskFl='catalogs_output/maskRMS1_sigma6_MockAlf_FullSky.npy')
-   SNRint_fromFile('catalogs_output/VolLim_20to80deg_zmax0p8_rank0.npy', RMS=0.18, plt=False, chan_width_kms=5,
+    detections_fromObs('catalogs_output/VolLim_20to80deg_zmax0p8_rank0.npy', obsyears=1, nstrips=20, plt=False, chan_width_kms=5,
                   maskFl='catalogs_output/Detected1yr_RMS0p18_VolLim_20to80deg_zmax0p8_chan5kms_rank0.npy')
 #   SNRint_fromFile('catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_MHI9to12.npy_rank1.npy', RMS=0.08, plt=False, 
 #                  maskFl='catalogs_output/Detected_VolLim_RMS0p08_20to80deg_z0p4to1_MHI9to12_new.npy')
