@@ -2,7 +2,9 @@ import matplotlib.pyplot as plt
 import astropy.units as u
 import astropy.constants as c
 import numpy as np
+from numpy import diff
 from random import choices
+from scipy import special
 from scipy.interpolate import UnivariateSpline
 from scipy.signal import fftconvolve
 import time
@@ -10,231 +12,253 @@ from mpi4py import MPI
 import numba as nb
 from math import erf
 import Galaxy_Functions as gf
-#import cupy as cp
+from Gaussian_Estimate import *
+from CHORD_Sensitivity import *
 
 # for parallelization 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()  
-size_mpi = comm.Get_size() 
+size_mpi = comm.Get_size()  
 
-# def Busy_general_batch_gpu(x, a, b1, b2, xe, xp, c, w, dtype=cp.float32):
-#     """
-#     Fully vectorized Busy function on GPU using CuPy.
-#     Arrays must be CuPy arrays (on GPU).
-#     Returns shape (n_profiles, len(x)).
-#     """
-#     x = x.astype(dtype)
-#     a, b1, b2, xe, xp, c = [arr.astype(dtype) for arr in (a, b1, b2, xe, xp, c)]
-#     w = dtype(w)
+upchan_res = gf.width_vel2freq(del_Vrest=5) # for 5 km/s wide channels
+# need to fix
+RMS_mJy = time2RMS(days=5*365/24, decl=np.deg2rad(20), nu=upchan_res*u.Hz).value
 
-#     # Broadcast to (n_profiles, n_x)
-#     X = x[cp.newaxis, :]
-#     B1, B2, XE, XP, C = [arr[:, cp.newaxis] for arr in (b1, b2, xe, xp, c)]
+def Busy_general(x, a, b1, b2, xe, xp, c, w):
+    ''' This is the functional definition for a General Busy Function:
+        Reference: https://ui.adsabs.harvard.edu/abs/2014MNRAS.438.1176W/abstract (Section 4.1, Equation 4)'''
+    
+    err_p = special.erf(b1*(w+x-xe)) + 1
+    err_m = special.erf(b2*(w-x+xe)) + 1
+    pbola = (c*((x-xp)**2)) + 1
+    
+    return (a/4)*err_p*err_m*pbola
 
-#     err_p = erf(B1 * (w + X - XE)) + 1.0
-#     err_m = erf(B2 * (w - X + XE)) + 1.0
-#     pbola = C * (X - XP) ** 2 + 1.0
+def integrate_profile(V, S):
+    ''' Helper function which integrates an HI profile. The 'V' parameter is the velocity axis in km/s. The 'S' paramater is the flux in mJy'''
 
-#     out = (a[:, cp.newaxis] / 4.0) * err_p * err_m * pbola
-#     return out
+    return np.trapz(S, x=V)  # trapz is a numeric integrator in python using trapezoid rule, diff(V) if dV
 
-@nb.njit(parallel=True, fastmath=True)
-def Busy_general_batch(x, a, b1, b2, xe, xp, c, w, dtype=np.float32):
-    """
-    Vectorized Busy Function for all spectra.
-    Returns array of shape (n_profiles, len(x)).
-    """
-    n_profiles = b1.size
-    n_x = x.size
-    out = np.empty((n_profiles, n_x), dtype=dtype)
-
-    for i in nb.prange(n_profiles):  # parallel loop
-        for j in range(n_x):
-            err_p = erf(b1[i]*(w + x[j] - xe[i])) + 1.0
-            err_m = erf(b2[i]*(w - x[j] + xe[i])) + 1.0
-            pbola = c[i]*((x[j] - xp[i])**2) + 1.0
-            out[i, j] = (a / 4.0) * err_p * err_m * pbola
-
-    return out
-
-def integrate_profile(X, Y):
-    return np.trapz(Y, x=X)
-
-def get_MHI(V, S, D):
+def get_MHI(V, S, z):
+    ''' Helper function which converts the integrated HI profile to HI Mass 
+    From Equation 47 of Meyer 2017'''
+    D_L = gf.Luminosity_Dist(z) # in Mpc
     int_S = integrate_profile(V, S)
-    return 2.356e5 * (D**2) * int_S
+    return 2.356e5 * (D_L**2) * int_S / (1+z)
+
+def get_MHI_freq(f, S, z):
+    ''' Helper function which converts the integrated HI profile in Hz (frequency axis) to HI Mass
+    From Equation 45 of Meyer 2017'''
+
+    D_L = gf.Luminosity_Dist(z) # in Mpc
+    int_S = integrate_profile(f, S) # in MHz*Jy
+    return 49.7 * (D_L**2) * int_S * 1e6 # in Hz*Jy
 
 
 def find_FWHM(x, y, level=0.5):
-    spline = UnivariateSpline(x, y - (np.max(y)*level), s=0)
-    roots = spline.roots()
-    if len(roots) < 2:
-        return np.nan, roots
-    return roots[-1] - roots[0], roots
+    ''' Helper function which finds the roots of the HI profile at the FWHM, to set to W50 width. 
+    Returns an array of all roots r[] found where the FWHM width is r[-1] - r[0] '''
 
-def assign_units(x, B, W50, D, z, MHI_desired, FWHM_thermal=10):
+    spline = UnivariateSpline(x, y-(np.max(y)*level), s=0)
+    roots = spline.roots() 
+    FWHM = roots[-1] - roots[0]
+    if len(roots) < 2:
+        return np.nan, roots  # no valid FWHM found
+    return FWHM, roots
+    
+def assign_units(x, B, W50, D, z, MHI_desired, Vlim=50, thermal_broaden=True):
     '''assigns units of velocity (km/s) vs. Flux density (Jy)'''
-    # Scale x-axis
-    S_norm = (B / np.max(B))
+
+    # scale x-axis
+    S_norm = (B/np.max(B))                  # Peak Flux set to 1 Jy if not specified
     FWHM, roots = find_FWHM(x, B)
-    # if root finding fails
-    if np.isnan(FWHM) or FWHM == 0: 
-        return None, None
-    # for very narrow spectra:
-    if W50 <= FWHM_thermal:
-        scale = FWHM_thermal / FWHM
-    else:
-        scale = W50 / FWHM
-    V = x * scale
-    f = gf.convert_f(V, z) # convert to frequency axis -> Note: df will not be constant
+    scale = W50 / FWHM                      # scaling factor from unitless → km/s    
+    V = x * scale                           # velocity axis in km/s
+
+    # for very narrow spectra, pad 0's to be able to convolve with gaussian later
+    if np.max(V) <= Vlim:
+        dV = V[1] - V[0]
+        n_pad = int((Vlim - np.max(V)) / dV)  # extend array to -20 to 20 km/s
+        left_pad  = V[0] - dV * np.arange(n_pad, 0, -1)
+        right_pad = V[-1] + dV * np.arange(1, n_pad + 1)
+        V = np.concatenate([left_pad, V, right_pad])
+        S_norm = np.pad(S_norm, pad_width=(n_pad, n_pad), mode='constant', constant_values=0.0)   
 
     # Scale y-axis
-    MHI_initial = get_MHI(V, S_norm, D)
-    y_scale = MHI_desired / MHI_initial
-    S = S_norm * y_scale
-    return V, f, S
+    MHI_initial = get_MHI(V, S_norm, z) 
+    y_scale = MHI_desired / MHI_initial   
+    S = S_norm * y_scale  
+    if thermal_broaden:
+        S_broad = convolve_spectrum(S, V)
+    else:
+        S_broad = S
 
-def normalDist(x, sigma, x0=0):
-    return np.exp(-(x - x0)**2 / (2*sigma**2)) / (sigma * np.sqrt(2*np.pi))
+    return V, S_broad     # Return V and S axes and W_ roots (for checking)
 
-def gaussian_kernel(V, FWHM):
-    sigma = FWHM / (2*np.sqrt(2*np.log(2)))
-    G = normalDist(V - np.mean(V), sigma)
-    return G / G.sum()
+def assign_freqUnits(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5):
+    W50broad = W50_broadened(W50)
+    W_freq = gf.width_vel2freq(del_Vrest=W50, z=z) # in Hz
 
-def convolve_spectrum(S, V, FWHM):
-    G = gaussian_kernel(V, FWHM)
-    return fftconvolve(S, G, mode='same')
+    if coarseRes:
+        chan_res = gf.chan_width # in Hz
+    else:
+        chan_res = upchan_res
+        #print("chan res in Hz", chan_res)
 
-def define_xaxis(f50, freq_res=0.001, x0=-5, x1=5, dtype=np.float32):
-    fwhm_approx = 2.2 # for w=1, FWHM in x is ~2.2
-    N = f50*(x1-x0) / (freq_res*fwhm_approx) # to select the right amount of points for 
-    x = np.linspace(x0, x1, int(N)).astype(np.float32) 
-    return x
+    if np.log10(MHI_desired) < 7: 
+        max_Wf = gf.width_vel2freq(del_Vrest=200)
+    elif (np.log10(MHI_desired) > 7) and (np.log10(MHI_desired) < 10):
+        max_Wf = gf.width_vel2freq(del_Vrest=900)
+    else:
+        max_Wf = gf.width_vel2freq(del_Vrest=2500)
+    Nchans = np.max(max_Wf/chan_res)
+    chan_res = chan_res 
+    freq_axis = np.arange(-Nchans*chan_res/2, Nchans*chan_res/2+1, chan_res)
 
-def Generate_Spectra(size, MHI, W50, D_C, z, a=1.0, w=1.0,
-                     b1=None, b2=None, c=None, xe=None, xp=None,
-                     chunk_size=100000, dtype=np.float32, freq_res=0.001):
-    """
-    Generates spectra using the Numba-parallel Busy function.
-    - chunk_size controls memory usage (avoid allocating > few GB)
-    """
+    # scale x-axis width by frequency width
+    S_norm = (B/np.max(B))                  # Peak Flux set to 1 Jy if not specified
+    FWHM, roots = find_FWHM(x, B)
+    scale = W_freq / FWHM                 # scaling factor from unitless → km/s    
+    f_highres = x * scale                   # velocity axis in km/s
 
-    print(f"[Rank {rank}] Generating Spectra (size={size})...")
+    # convert to MHz to integration
+    f_highres = f_highres / 1e6
+    freq_axis = freq_axis / 1e6
+    S_resamp = np.interp(x=freq_axis, xp=f_highres, fp=S_norm)
+
+    # Scale y-axis
+    MHI_initial = get_MHI_freq(freq_axis, S_resamp, z) 
+    y_scale = MHI_desired / MHI_initial   
+    S_freq = S_resamp * y_scale 
+    
+    freq_obs = gf.get_fobs(z) # in MHz
+
+    sigma_f = gf.width_vel2freq(del_Vrest=10) / 1e6 # in MHz
+    Sf_convolve = convolve_spectrum(S_freq, freq_axis, sigma=sigma_f)
+    MHI_final = get_MHI_freq(freq_axis, Sf_convolve, z)
+
+    #print("intial mass is ", MHI_initial)
+    #print("desired mass is ", MHI_desired) 
+    #print("final mass is ", MHI_final)
+
+    S_int, _ = gf.int_S21(MHI=MHI_desired, z=z)
+    #print("S peak in Jy from velocity", S_int/W50broad)
+    Sf_int, _ = gf.int_S21Hz(MHI=MHI_desired, z=z) 
+    #print("S peak in Jy from freq", Sf_int/gf.width_vel2freq(W50broad, z=z)) 
+
+    freq_final = freq_axis + freq_obs
+    # plt.figure()
+    # #plt.plot(f_highres, S_norm)
+    # #plt.plot(freq_axis, S_resamp)
+    # plt.plot(freq_final, Sf_convolve)
+    # plt.title(f'log(MHI)={np.log10(MHI_desired):.1f}, Speak={S_int/W50broad:.3f} Jy')
+    # plt.show()
+
+    return freq_final, Sf_convolve
+
+
+# Gaussian Function
+def normalDist(x, sigma=10, x0=0):
+    G =  np.exp(-(x - x0)**2 / (2*sigma**2)) 
+    return G / np.trapz(G, x)                 # normalize computationally 
+
+def convolve_spectrum(S, V, sigma=10):
+    #G = gaussian_kernel(V)
+    dv = V[1] - V[0]
+    G = normalDist(V, sigma=sigma)
+    # print("AREA is ", np.trapz(G, V))
+    # plt.figure()
+    # plt.plot(V, G)
+    # plt.show()
+    S_broad = fftconvolve(S, G, mode='same') * dv  # since fftconvolve is a sum, must include dv
+    return S_broad
+
+# def gaussian_kernel(V, sigma=10):
+#     #sigma = FWHM / (2*np.sqrt(2*np.log(2)))
+#     G = normalDist(V, sigma)                # center kernel at 0
+#     return G / G.sum()                      # normalize discrete sum = 1
+
+# def convolve_spectra(B, V, FWHM):
+#     G = gaussian_kernel(V, FWHM)
+#     return fftconvolve(B, G[None, :], mode='same', axes=1)
+
+def SNRint(f, Sf, z, W50, MHI, D_C, obs_yr=5):
+    W50_broad = W50_broadened(W50)
+    Wf = gf.width_vel2freq(del_Vrest=W50_broadened(W50_broad))
+
+    chan_mask = Sf > RMS_mJy*1e-3*3
+    S_int = integrate_profile(f[chan_mask], Sf[chan_mask]) # in Jy*MHz
+    N_chans = np.sum(Sf > RMS_mJy*1e-3*3)
+    SNRint = S_int / (RMS_mJy*upchan_res*1e-9*np.sqrt(N_chans))
+    return SNRint
+
+    #SNRint2 = gf.SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=183000)#=upchan_res)
+    #print("integrated SNR old way is ", SNRint2)
+    #v_ch = 5
+    #f_smo = np.minimum(W50_broad/(v_ch),(10.**2.5)/v_ch)
+    #SNR_MJ = MHI*np.sqrt(f_smo)/(RMS_mJy*W50_broad*235.6*D_C**2)
+    #print("integrated singal to noise by MJ is ", SNR_MJ)
+
+def Generate_Spectra(size, MHI, W50, D_C, z, a=1, w=1, b1=None, b2=None, c=None, xe=None, xp=None, thermal_broaden=True):
+    ''' Main function which generates an HI Spectrum. 
+    The shape of the busy function (specified by a, b1, b2, c) is randomly generated (unless otherwise specified). 
+    The area under the profile is set by MHI. 
+    The FWHM width (W50) is set by VHI and inclination using W50 = VHI*2sin(i). 
+    The profile is centered around 0 so xe=0 and xp=0. We use a second order n=2 general busy function'''
+
+    #print("Generating Spectra....")
     start = time.time()
 
-    #f50 = W50 * gf.df_dv(W50, z=z)
-    N = 100000
-    x = np.linspace(-5,5,N)
-    
-    # Get luminosity distance D_L from co-mocing distance D_C:
+    #W = VHI*2*np.sin(i) # W_50       
+    x = np.linspace(-10, 10, 10000).astype(np.float32)  # unitless axes used in generalized busy function definition
+
     D_L = (1+z)*D_C
 
-    if b1 is None: b1 = np.random.uniform(1, 3, size=size)
-    if b2 is None: b2 = np.random.uniform(1, 3, size=size)
-    if c  is None: c  = np.random.uniform(0, 1, size=size)
-    if xe is None: xe = np.random.uniform(-0.1, 0.1, size=size)
-    if xp is None: xp = np.random.uniform(-0.1, 0.1, size=size)
+    if b1==None: b1 = np.random.uniform(1, 5, size=size)
+    if b2==None: b2 = np.random.uniform(1, 5, size=size)
+    if c==None: c = np.random.uniform(0, 4, size=size)
+    if xe==None: xe = np.random.uniform(-0.1, 0.1, size=size)
+    if xp==None: xp = np.random.uniform(-0.1, 0.1, size=size)
 
-    final_M = np.empty(size, dtype=dtype)
-    Vel = np.empty((size, N), dtype=dtype)
-    S_flux = np.empty((size, N), dtype=dtype)
-    freq = np.empty((size, N), dtype=dtype)
+    SNR_int = []
 
-    # Process in manageable chunks
-    for start_idx in range(0, size, chunk_size):
-        end_idx = min(start_idx + chunk_size, size)
-        n_chunk = end_idx - start_idx
+    for i in np.arange(size):
+        #print(i)
+        B = Busy_general(x, a, b1[i], b2[i], xe[i], xp[i], c[i], w)
+        V, S = assign_units(x, B, W50[i], D_L[i], z[i], MHI_desired=MHI[i])
+        f, Sf = assign_freqUnits(x, B, W50[i], D_L[i], z[i], MHI_desired=MHI[i])
+        f_V = gf.convert_f(V, z[i])
+        final_M = get_MHI_freq(f, Sf, z[i])
+        #print("Final  M is ", final_M)
+        SNR_int.append(SNRint(f, Sf, z[i], W50[i], MHI[i], D_C=D_C[i]))
 
-        b1_chunk = b1[start_idx:end_idx]
-        b2_chunk = b2[start_idx:end_idx]
-        c_chunk  = c[start_idx:end_idx]
-        xe_chunk = xe[start_idx:end_idx]
-        xp_chunk = xp[start_idx:end_idx]
-
-        # ⚡ Call Numba-parallel Busy function
-        B_chunk = Busy_general_batch(x, a, b1_chunk, b2_chunk, xe_chunk, xp_chunk, c_chunk, w=1)
-
-        for i in range(n_chunk):
-            Vel[start_idx+i], freq[start_idx+i], S = assign_units(x, B_chunk[i], W50[start_idx+i], D_L[start_idx+i], z[start_idx+i], MHI[start_idx+i])
-            if Vel[start_idx+i] is None:
-                final_M[start_idx+i] = np.nan
-                continue
-
-            FWHM_thermal = 10.0  # km/s
-            S_flux[start_idx+i] = convolve_spectrum(S, Vel[start_idx+i], FWHM_thermal)
-            final_M[start_idx+i] = get_MHI(Vel[start_idx+i], S_flux[start_idx+i], D_L[start_idx+i])
+        # plt.figure()
+        # plt.plot(f_V, S)
+        # plt.plot(f, Sf)
+        # plt.show()
 
     end = time.time()
-    print(f"[Rank {rank}] Runtime: {end - start:.2f} sec for {size} spectra")
+    #print(f"Runtime: {end - start:.3f} seconds")
+    return SNR_int
+    #return final_M, V, S#, freq
 
-    return final_M, Vel, S_flux, freq
-
-@nb.njit(parallel=True, fastmath=True)
-def interpolate_faxis(f_arr, Sarr, f_full, fres=0.001):
-    Nspec = f_arr.shape[0]
-    S_full = np.zeros((Nspec, len(f_full)))
-
-    for i in nb.prange(Nspec):
-        f_cutout = f_arr[i, ::-1]
-        Sflux = Sarr[i, ::-1]
-        freq_new = np.arange(f_cutout[0], f_cutout[-1] + fres/2, fres)
-
-        # Numba supports np.interp
-        S_new = np.interp(freq_new, f_cutout, Sflux)
-
-        start_idx = np.searchsorted(f_full, freq_new[0])
-        end_idx   = start_idx + len(freq_new)
-        if end_idx > len(f_full):
-            end_idx = len(f_full)
-        n_insert = end_idx - start_idx
-        S_full[i, start_idx:end_idx] = S_new[:n_insert]
-
-    return S_full
-
-def Run_Spectra(catalog_fl, zmax, size=None, plot=False, gpu=False, fmax=1421, fres=0.001, dtype=np.float32, interpolate=True):
+def Save_Spectra(catalog_fl, size=None):
     catalog = np.load(catalog_fl)
-    if size==None:
-        size = catalog.shape[0]
-        print("catalog size ", catalog.shape[0])
+    if size is None:
+        size = catalog.shape[1]
 
-    # Split work across MPI ranks
-    chunk_size = size // size_mpi
-    start_i = rank * chunk_size
-    end_i = size if rank == size_mpi-1 else (rank + 1) * chunk_size
+    MHI = 10**catalog[0]
+    W50 = catalog[3]
+    D = catalog[6]
+    z = catalog[8]
 
-    local_cat = catalog[start_i:end_i]
-    MHI = local_cat[:,0]
-    W50 = local_cat[:,3]
-    D = local_cat[:,6]
-    z = local_cat[:,8]
-
-    print(f"Generatiing Spectra [Rank {rank}]")
-    t1 = time.time()
-
-    final_M, Vel, S_flux, freq = Generate_Spectra(local_cat.shape[0], MHI, W50, D, z, dtype=dtype)
-    np.save(f"spectra_rank{rank}.npy", np.asarray([Vel, freq, S_flux], dtype=dtype))
-    np.save(f"intMHI_rank{rank}.npy", np.asarray([final_M], dtype=dtype))
-    t2 = time.time()
-    print(f"[Rank {rank}] Done and saved spectra — took {t2 - t1:.2f} seconds.")
-    if plot:
-        print("Plotting...")
-        import Plotting as plot
-        plot.check_Spectra(MHI, final_M, W50, Vel, S_flux, freq, z, D, "Plots/Test_spectra.pdf")
-
-    if interpolate:
-        t3 = time.time()
-        print(f"[Rank {rank}] Starting Interpolation...")
-        fmin = gf.get_fobs(zmax)
-        f_full = np.arange(fmin, fmax + fres/2, fres)
-        print(len(f_full))
-        S_full = interpolate_faxis(freq, S_flux, f_full, fres)
-        np.save(f"Sfull_rank{rank}.npy", S_full)
-        t4 = time.time()
-        print(f"[Rank {rank}] Done and saved full arra — took {t4 - t3:.2f} seconds.")
-
+    SNR_int = Generate_Spectra(size, MHI, W50, D, z)
+    np.save("catalogs_output/Spectra_SNR_int_z0p1.npy", SNR_int)
+    #np.save("VolLim_20to60deg_Dmax100_spectra.npy", np.asarray([V, S_broad]))
+    #MHI_res = np.log10(final_M) - np.log10(MHI)
+    #plt.figure()
+    #plt.scatter(MHI, MHI_res)
+    #plt.show()
 
 if __name__ == "__main__":
-    #Run_Spectra(catalog_fl='catalogs_output/VolLim_20to60deg_Dmax200_rank0.npy', zmax=0.117, plot=False)
-    Run_Spectra(catalog_fl='../catalogs_output/VolLim_20to60deg_Dmax500.npy', zmax=0.117, plot=False)
-
+    Save_Spectra(catalog_fl='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', size=None)
