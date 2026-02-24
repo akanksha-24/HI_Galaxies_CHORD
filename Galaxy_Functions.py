@@ -19,8 +19,8 @@ MHI_grid = np.logspace(5,11,100000)
 #Constant for MHI calculation:
 C21 = (2.356 * 10**5) * u.solMass * u.Mpc**-2 * (u.Jy*u.km/u.s)**-1
 
-#chan_wdith 
-chan_width = ((1600/8192)*u.MHz).to_value(u.Hz)
+# coarse chan wdith 
+chan_width = ((1600/8192)*u.MHz).to_value(u.Hz) # or 1200/6144
 
 def mid_bin(var):
     return (var[1:] + var[:-1])/2
@@ -98,6 +98,9 @@ def freq_fromz(z, f0=1420*u.MHz):
 def Comoving_Dist(z):
     return cosmo.comoving_distance(z).to(u.Mpc)
 
+def Luminosity_Dist(z):
+    return cosmo.luminosity_distance(z).to_value(u.Mpc)
+
 def build_z_interp(zmin=0, zmax=5.0, npt=10000, dtype=np.float32):
     """Build fast interp to invert comoving_distance to get redshift z."""
     z_grid = np.linspace(zmin, zmax, npt, dtype=dtype)
@@ -139,7 +142,7 @@ def schechter_fit_lg(MHI=MHI_grid, phi_s=phi_s, M_s=M_s, alpha=alpha):
     return np.log(10)*(phi_s) * (MHI/M_s)**(alpha+1) * np.exp(-1*(MHI/M_s)) 
 
 def schechter_fit(MHI, phi_s=phi_s, M_s=M_s, alpha=alpha):
-    return (phi_s)*(MHI/M_s)**(alpha) * np.exp(-1*(MHI/M_s)) / M_s
+    return (phi_s)*(MHI/M_s)**(alpha) * np.exp(-1*(MHI/M_s)) / M_s43
 
 def my_gammainc(x0, alpha):
     if alpha==-1:
@@ -386,17 +389,17 @@ def df_dv(v, z, f_rest=1420.40575177):
     df_dv = f_obs / (v_c * (1 + v/v_c) * np.sqrt(1 - (v/v_c)**2))
     return df_dv # In units MHz / (km/s)
 
-def chanwidth_vel2freq(dv, z=0, f_rest=1420.40575177):
-    '''converts velocity resolution to frequency resolution'''
+def width_vel2freq(del_Vrest, z=0, f_rest=1420.40575177):
+    '''converts a velocity width to frequency width'''
     v_c = c.c.to(u.km/u.s).value 
-    df = dv*f_rest/(v_c*(1+z)) # in units MHz
-    return df*10**6 # in units Hz
+    del_fobs = del_Vrest*f_rest/(v_c*(1+z)) # in units MHz
+    return del_fobs*10**6 # in units Hz
 
-def chanwidth_freq2vel(df, z=0, f_rest=1420.40575177):
-    '''converts velocity resolution to frequency resolution'''
+def width_freq2vel(del_fobs, z=0, f_rest=1420.40575177):
+    '''converts frequency width to velocity width'''
     v_c = c.c.to(u.km/u.s).value 
-    dv = df*v_c*(1+z)/f_rest
-    return dv # in units km/s
+    del_Vrest = del_fobs*v_c*(1+z)/f_rest
+    return del_Vrest # in units km/s
 
 def convert_T(obs_freq, S, b_max=22*8.5):
     '''Convert spectral flux densitities in mJy to temperatures in K'''

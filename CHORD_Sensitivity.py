@@ -17,8 +17,8 @@ def native_freso(f_low=0, f_high=1500):
     nchans = int((f_high - f_low) / resolution)
     return np.linspace(f_low, f_high, nchans)
 
-def beam_size(waveln=0.21, Bmax=(8.5*22)):
-    return 1.029*waveln/Bmax
+def beam_size(waveln=0.21, Bmax=(8.5*22), z=0):
+    return 1.029*waveln*(1+z)/Bmax
 
 def getRMS(tau=3600, nu=183*u.kHz, N=512):
     tau=tau *u.s
