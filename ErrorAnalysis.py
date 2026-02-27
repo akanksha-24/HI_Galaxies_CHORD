@@ -25,8 +25,9 @@ def Vmax_corr(MHI, z, RMS_mJy, W50_broad, chan_width, sigma, solidang):
 def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6):
     upchan_res = width_vel2freq(del_Vrest=5)
     RMS_mJy = time2RMS(days=5*365/24, decl=np.deg2rad(20), nu=upchan_res*u.Hz).value
+    #print("RMS is ", RMS_mJy)
     solidang = solid_angle(dec1=dec1, dec2=dec2, ra1=0, ra2=360)
-    print("solidang is ", solidang)
+    #print("solidang is ", solidang)
     bins = np.linspace(5, 11, 31)
     binwidth = (bins[1:])-(bins[:-1])
     bin_centers = mid_bin(bins)
@@ -34,12 +35,12 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6):
     phi = np.zeros((trials, len(bins)-1))
     Counts = np.zeros((trials, len(bins)-1))
 
-    plt.figure()
+    #plt.figure()
     for i in np.arange(trials):
         print(i)
         alpha, M_s, phi_s = choose_SchechParams()
         HIMF = schechter_fit_lg(MHI_grid, phi_s=phi_s, M_s=M_s, alpha=alpha)
-        plt.plot(np.log10(MHI_grid), np.log10(HIMF), label='Drawn within error')
+        #plt.plot(np.log10(MHI_grid), np.log10(HIMF))
         #plt.plot(np.log10(MHI_grid), np.log10(HIMF_Jones2018(MHI=MHI_grid)), label='HIMF - drawn from, Jones2018')
         catalog = Gen_Catalog(zmax=zmax, dec1=dec1, dec2=dec2, zmin=zmin, save=False, 
                               phi_s=phi_s, alpha=alpha, M_s=M_s)
@@ -50,17 +51,21 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6):
         W50_broad = W50_broadened(W50)
         SNR = SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=upchan_res)
         mask = SNR > 6
-        np.save('detected_test.npy', catalog[:,mask])
+        #np.save('detected_test.npy', catalog[:,mask])
         Vmax = Vmax_corr(MHI[mask], z[mask], RMS_mJy, W50_broad[mask], chan_width=upchan_res, sigma=sigma, solidang=solidang)
         counts_Vcorr, _ = np.histogram(np.log10(MHI[mask]), bins=bins, weights=1/Vmax)
         phi[i] = counts_Vcorr/binwidth
         counts, _ = np.histogram(np.log10(MHI[mask]), bins=bins)
         Counts[i] = counts
-        plt.scatter(bin_centers, np.log10(phi[i]))
+        #plt.scatter(bin_centers, np.log10(phi[i]))
         #recover_HIMF(catalog_fl='detected_test.npy', Vollim=False, RMS=RMS_mJy, sigma=6, bins=bins, figname='Plots/test_detections.png')
-        plt.show()
+    #plt.show()
+
+    np.save('catalogs_output/phi_counts_z0p1_1000.npy', np.asarray([phi, Counts]))
+    #arr = np.load('catalogs_output/phi_counts.npy')
+    #print(arr.shape)
     
     
 
 if __name__ == "__main__":
-    MonteCarlo_HIMF(trials=10, zmax=0.1)
+    MonteCarlo_HIMF(trials=1000, zmax=0.1)
