@@ -64,8 +64,10 @@ def sample_in_shell(D1, D2, N, solidang=4*np.pi, dtype=np.float32):
     V = (solidang / 3.0) * (D**3)
     return D, V
 
-def Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, D1, D2, zinterp, solidang,  dtype=np.float32, SNRint=False, RMS=0.2, sigma=6):
-    MHI_sample = sample_HIMF(N, MHI).astype(dtype) # draw from HIMF
+def Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, D1, D2, zinterp, solidang,  
+                 dtype=np.float32, SNRint=False, RMS=0.2, sigma=6,
+                 phi_s=gf.phi_s, M_s=gf.M_s, alpha=gf.alpha):
+    MHI_sample = sample_HIMF(N, MHI, phi_s=phi_s, M_s=M_s, alpha=alpha).astype(dtype) # draw from HIMF
     VHI_sample = gf.VHI_polyFit(MHI_sample, dtype=dtype).astype(dtype) # estimate from abundance matching
     cos_i = np.random.random(N).astype(dtype)   # uniform in [0,1]
     i_sample = np.arccos(cos_i)   # inclination angles in [0, π/2] following a sin(i) probablity distribution function
@@ -101,11 +103,12 @@ def Save_Catalog_npz(samples, zmax, solidang, flname, z_arr, N_arr):
 #         np.save(flname+'_'+extn+'.npy',samples[:,i])
 
 
-def Gen_Catalog(zmax, npt, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
-                    Dmax=None, footprint=None, Fluxlim=False, sigma=1,
+def Gen_Catalog(zmax, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
+                    footprint=None, Fluxlim=False, sigma=1,
                     noise=1e-4, vel_width=10, MHIres=10000,
                     draw=True, fltype='npy', flname='catalog.npy',
-                    savelarge=True, dtype=np.float32, SNRint=False, sigma_int=6, RMS=0.2, save=True):
+                    savelarge=True, dtype=np.float32, SNRint=False, sigma_int=6, RMS=0.2, save=True,
+                    phi_s=gf.phi_s, M_s=gf.M_s, alpha=gf.alpha):
     
     print("starting Job...")
     
@@ -114,18 +117,19 @@ def Gen_Catalog(zmax, npt, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=
     size = comm.Get_size()
     start = time.time()
 
+    z_step = 1e-4
+    npt = zmax/z_step
+    z_interp = gf.build_z_interp(zmin, zmax, zstep=z_step, dtype=dtype)
+
     if footprint is None:
         solidang = gf.solid_angle(dec1, dec2, ra1, ra2)
     else:
         solidang = footprint.to(u.sr)
     
-    z_interp = gf.build_z_interp(zmin, zmax, npt=npt*10, dtype=dtype)
-    if Dmax is not None:
-        zmax = z_interp(Dmax)
 
     if rank == 0:
         print(f"max redshift is {zmax}")
-    z, D, V, dV = gf.comoving_volume(zmin=zmin, zmax=zmax, npt=npt, solidang=solidang)
+    z, D, V, dV = gf.comoving_volume(zmin=zmin, zmax=zmax, zstep=z_step, solidang=solidang)
 
     #Split work among ranks
     all_indices = np.arange(len(dV))
@@ -133,7 +137,8 @@ def Gen_Catalog(zmax, npt, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=
 
     # Set up HIMF grid
     MHI = np.logspace(MHImin, MHImax, MHIres)
-    n = gf.galaxy_density(MHI)
+    n = gf.galaxy_density(MHI, phi_s=phi_s, M_s=M_s, alpha=alpha)
+    print(n)
 
     local_samples = []
     local_Narr = []
@@ -144,7 +149,7 @@ def Gen_Catalog(zmax, npt, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=
             MHImin_i = np.log10(gf.S_toMHI(F_lim, vel_width, D[i], unitless=True))
             MHImin_i = max(5, MHImin_i)
             MHI = np.logspace(MHImin_i, MHImax, MHIres)
-            n = gf.galaxy_density(MHI)
+            n = gf.galaxy_density(MHI, phi_s=phi_s, M_s=M_s, alpha=alpha)
 
         N = n * dV[i]
         N = 0 if np.isinf(N) else int(N)
@@ -153,11 +158,15 @@ def Gen_Catalog(zmax, npt, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=
         if draw:
             if i == 0:
                 if zmin==0:
-                    samples_ = Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, 0, D[i], z_interp, solidang, dtype=dtype, SNRint=SNRint, sigma=sigma_int, RMS=RMS)
+                    samples_ = Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, 0, D[i], z_interp, 
+                                            solidang, dtype=dtype, SNRint=SNRint, sigma=sigma_int, RMS=RMS,
+                                            phi_s=phi_s, M_s=M_s, alpha=alpha)
                 else:
                     continue
             else:
-                samples_ = Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, D[i-1], D[i], z_interp, solidang, dtype=dtype, SNRint=SNRint, sigma=sigma_int, RMS=RMS)
+                samples_ = Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, D[i-1], D[i], z_interp, 
+                                        solidang, dtype=dtype, SNRint=SNRint, sigma=sigma_int, RMS=RMS,
+                                        phi_s=phi_s, M_s=M_s, alpha=alpha)
             local_samples.append(samples_)
     print("Saving samples...")
     if draw:
@@ -241,7 +250,7 @@ def LoadMockALFALFA(datafile, outfile, changeVelocity=False, Dist_range=None, RA
 
 
 def LoadALFALFA(alftable='/Users/akankshabij/Documents/PhD/Data/ALFALFA/a100.code12.table2.190808.csv',
-                 flsave='catalogs_output/ALFALFA_a100_Dmax200_ALFboundaries.npy', C=90):
+                 flsave='catalogs_output/ALFALFA_a100_Dmax200_ALFboundaries_Alfthreshold.npy', C=90):
     alf = pd.read_table(alftable, delimiter=',')
     # Select relevant source:
     alf = alf[(alf['HIcode'])==1]
@@ -252,6 +261,8 @@ def LoadALFALFA(alftable='/Users/akankshabij/Documents/PhD/Data/ALFALFA/a100.cod
     alf = alf[gf.ALF_boundaries(ra_deg=alf['RAdeg_HI'], dec_deg=alf['DECdeg_HI'])]
     alf = alf[(alf['Dist'])<=200]
     #alf = alf[gf.ALF_completeness(S21=alf['HIflux'], W50=alf['W50'], C=C)]
+    S21_thalf = gf.S21th_ALFALFA(alf['W50'], SNR=6.5)
+    alf = alf[alf['SNR'] > S21_thalf]
     print(len(alf))
 
     lg_MHI = (alf['logMH']) # log(solMass)
@@ -281,14 +292,16 @@ def load_catalogParams(catalog_file):
     z = cat[8]
     return MHI, Vrot, i, W_50, ra, dec, D, Vol, z 
 
-if __name__ == "__main__":
-    LoadALFALFA()
+# if __name__ == "__main__":
+#     Gen_Catalog(zmax=0.05, Dmax=110, npt=100, dec1=20, dec2=80, MHImin=5, MHImax=12, Fluxlim=False, 
+#                 flname='catalogs_output/VolLim_20to80deg_Dmax200_MHImatchmocksim.npy', dtype=np.float64)
+    #LoadALFALFA()
     #Gen_Catalog(zmax=0.8, npt=100000, dec1=20, dec2=80, Fluxlim=False, flname='catalogs_output/VolLim_20to80deg_zmax0p8', dtype=np.float64)
     #Gen_Catalog(zmin=0.4, zmax=1, npt=10000, dec1=20, dec2=80, Fluxlim=False, MHImin=9, MHImax=12,
     #            flname='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_MHI9to12.npy')
-    # LoadMockALFALFA('../ALFALFA_Mock_Brooks/mock_whole_sky_df', changeVelocity=False, 
+    # LoadMockALFALFA('../ALFALFA_Mock_Brooks/mock_whole_sky_df', changeVelocity=True, 
     #                 Dist_range=[0,200], Dec_range=[20,80], 
-    #                 outfile='catalogs_output/MockAlf_D200_Dec20to80.npy')
+    #                 outfile='catalogs_output/MockAlf_D200_Dec20to80_changeVelocity.npy')
     #merge_rankfiles(flname='catalogs_output/VolLim_20to60deg_zmin0p4_zmax1', delete_rank_files=False)
 
     

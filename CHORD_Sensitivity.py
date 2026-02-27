@@ -12,6 +12,9 @@ eff=0.5
 Aeff=eff*(np.pi*(D/2)**2) * u.m**2
 #SEFD=9*u.Jy 
 
+def RMS_fromDays(days, decl, N=512, PB=True):
+    2*c.k_B*Tsys/Aeff 
+
 def native_freso(f_low=0, f_high=1500):
     resolution = 1500 / 8192
     nchans = int((f_high - f_low) / resolution)
@@ -22,6 +25,7 @@ def beam_size(waveln=0.21, Bmax=(8.5*22), z=0):
 
 def getRMS(tau=3600, nu=183*u.kHz, N=512):
     tau=tau *u.s
+    #print("chan_res is", nu)
     RMS = (2*c.k_B*Tsys) / (Aeff*np.sqrt(N*(N-1)*nu*tau))
     return RMS.to(u.mJy)
 
@@ -51,6 +55,7 @@ def time2RMS(days, decl, PB=True, nu=183*u.kHz, N=512):
     dwell = dwell_time(decl, PB) # u.s/day
     #print('dwell time is ', dwell)
     tau = dwell * days # u.s
+    #print("tau is ", tau)
     return getRMS(tau, nu, N)
 
 #def Equal_Depth_Survey(catalog, RMS)

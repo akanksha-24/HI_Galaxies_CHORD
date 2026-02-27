@@ -74,9 +74,11 @@ def set_cosmology(h=0.7, om=0.315):
 cosmo=cosmo_Jones2018 = set_cosmology(h=0.7)
 # cosmo_P2018
 
-def comoving_volume(zmax, zmin=0, npt=20000, solidang=4*np.pi):
+def comoving_volume(zmax, zmin=0, zstep=1e-3, solidang=4*np.pi):
     '''Get comoving volume, dV shell volume and distance from redshift'''
-    z_arr = np.linspace(zmin, zmax, npt)
+    if zmin==0:
+        zmin=zstep/2
+    z_arr = np.arange(zmin, zmax, zstep)
     dz = np.diff(z_arr)
 
     # find mid-points
@@ -101,9 +103,11 @@ def Comoving_Dist(z):
 def Luminosity_Dist(z):
     return cosmo.luminosity_distance(z).to_value(u.Mpc)
 
-def build_z_interp(zmin=0, zmax=5.0, npt=10000, dtype=np.float32):
+def build_z_interp(zmin=0, zmax=5.0, zstep=1e-3, dtype=np.float32):
     """Build fast interp to invert comoving_distance to get redshift z."""
-    z_grid = np.linspace(zmin, zmax, npt, dtype=dtype)
+    if zmin==0:
+        zmin=zstep/2
+    z_grid = np.arange(zmin, zmax, zstep, dtype=dtype)
     D = cosmo.comoving_distance(z_grid.astype(np.float64)).to(u.Mpc).value.astype(dtype)
     return interp1d(D, z_grid, kind="linear", bounds_error=False, fill_value=(0.0, zmax))
 
@@ -218,6 +222,7 @@ def Vmax_correct(catalog_file, sigma=6, RMS=0.1, fromD=True, mockAlf=False, soli
     #Dsurvey = Comoving_Dist(z=1).value #np.nanmax(catalog[6]) # max survey distance
     #Dmin = Comoving_Dist(z=0.4).value
     Dsurvey = np.max(catalog[6])
+    print("Dsurvey is ", Dsurvey)
     Dmin = np.nanmin(catalog[6])
     #print("Dmin is ", Dmin)
     W50_broad = gauss.W50_broadened(W50=catalog[3])
@@ -227,7 +232,8 @@ def Vmax_correct(catalog_file, sigma=6, RMS=0.1, fromD=True, mockAlf=False, soli
     # zmin = np.nanmin(catalog[8])
     # print("zmin is ", zmin)
     if fromD:
-        chan_width = (1500*u.MHz/8192).to_value(u.Hz)
+        #chan_width = (1500*u.MHz/8192).to_value(u.Hz)
+        chan_width = width_vel2freq(5)
         Dmax = estimate_DLmax(MHI=catalog[0], z=catalog[8], sigma=sigma, RMS_chan=RMS, chan_width=chan_width, DeltaV=W50_broad)
     if fromD==False or mockAlf:
         S21, D = int_S21(MHI=catalog[0], z=catalog[8])
@@ -240,20 +246,11 @@ def Vmax_correct(catalog_file, sigma=6, RMS=0.1, fromD=True, mockAlf=False, soli
     Dmax_comov = Dmax / (1 + catalog[8])  # convert from luminosity distance to comoving
     #print(Dmax_comov)
     Dmax_comov = np.minimum(Dmax_comov, Dsurvey)  
+    print("Dmax from plotting ", Dmax_comov)
     Vmax = VolumeFromDist(Dmax_comov, solidang=solidang, Dmin=Dmin)
+    print("Vmax from Plotting ", Vmax)
     #print(Vmax)
     return Vmax, catalog[0], W50_broad
-    
-# def Vmax_correct(MHI, z, RMS, sigma, W50, solidang):
-#     S21, D_L = int_S21(MHI, z)
-#     D = cosmo.comoving_distance(z).to_value(u.Mpc)
-#     W50_broad = gauss.W50_broadened(W50)
-#     SNR = SNR_int(z, MHI, DeltaV=W50_broad, RMS_chan=RMS)
-#     S21lim = (RMS/1000)*sigma*48
-#     #S21lim = S21th_ALFALFA(W50_broad, SNR=6)
-#     Dmax = D*np.sqrt(S21/S21lim)
-#     Vmax = VolumeFromDist(Dmax, solidang)
-#     return Vmax
 
 def VHI_polyFit(MHI, dtype=np.float32):
     '''Polynomial Fit for rotational velocity from Spekkens&Lewis: https://www.overleaf.com/project/5e378eb163ee6f0001cc9a7f'''

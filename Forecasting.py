@@ -53,13 +53,13 @@ def detections_fromRMS(catalog_file, maskFl='', RMS=0.1, sigma=6):
 def detections_fromObs(catalog_file, maskFl, obsyears, nstrips, sigma=6, chan_width_kms=None):
     obsdays = 365*obsyears/nstrips
     if chan_width_kms!=None:
-        chan_width_Hz = gf.chanwidth_vel2freq(chan_width_kms, f_rest=1420)
+        chan_width_Hz = gf.width_vel2freq(chan_width_kms, f_rest=1420)
         print("chan width in Hz is ", chan_width_Hz)
     else:
         chan_width_Hz = gf.chan_width
-    RMS = chord.time2RMS(days=obsdays, decl=20, PB=True, nu=chan_width_Hz*u.Hz, N=512)
+    RMS = chord.time2RMS(days=obsdays, decl=np.deg2rad(20), PB=True, nu=chan_width_Hz*u.Hz, N=512)
     print("RMS is ", RMS)
-    SNRint_fromFile(catalog_file=catalog_file, maskFl=maskFl, RMS=RMS.value, sigma=sigma, chan_width=chan_width_Hz)
+    #SNRint_fromFile(catalog_file=catalog_file, maskFl=maskFl, RMS=RMS.value, sigma=sigma, chan_width=chan_width_Hz)
 
 def apply_ALFboundaries(catalog_file, maskFl):
     catalog = np.load(catalog_file)
@@ -142,7 +142,7 @@ def compareCatalogs(catalog1, catalog2, RMS, sigma=6, plt=True, figname='', titl
         #plot.Detection_compareCats(MHI1=MHI1[mask1], MHI2=MHI2[mask2], figname=figname, title=title)
         plot.Detection_compare_Decs(MHI1[mask1], MHI2[mask2], Dec1=Dec1[mask1], Dec2=Dec2[mask2], figname=figname, title=title)
 
-if __name__ == "__main__":
+#if __name__ == "__main__":
     # apply_ALFboundaries(catalog_file='DetectionsALFALFA_MockSim_20to80deg_Dmax200.npy', 
     #                     maskFl='catalogs_output/DetectionsALFALFA_MockSim_20to80deg_Dmax200_ALFboundaries.npy')
     # apply_ALFboundaries(catalog_file='DetectionsALFALFA_20to80deg_Dmax200.npy', 
@@ -153,8 +153,8 @@ if __name__ == "__main__":
 #    detections_ALFALFA(catalog_file='catalogs_output/VolLim_20to80deg_Dmax200_MHImatchmocksim.npy_rank0.npy', maskFl='DetectionsALFALFA_Vollim_Matchsim_20to80deg_Dmax200.npy')
 #   detections_ALFALFA(catalog_file='catalogs_output/MockAlf_D200_Dec20to80_changeVelocity.npy', maskFl='DetectionsALFALFA_MockSim_changeVelocity_20to80deg_Dmax200.npy')
 #    SNRint_fromFile('catalogs_output/MockAlf_FullSky.npy', RMS=1, plt=False, maskFl='catalogs_output/maskRMS1_sigma6_MockAlf_FullSky.npy')
-    detections_fromObs('catalogs_output/VolLim_20to80deg_zmax0p8_rank0.npy', obsyears=1, nstrips=20, chan_width_kms=5, 
-                  maskFl='catalogs_output/Detected1yr_RMS0p18_VolLim_20to80deg_zmax0p8_chan5kms_rank0.npy')
+#    detections_fromObs('catalogs_output/VolLim_20to80deg_zmax0p8_rank0.npy', obsyears=5, nstrips=30, chan_width_kms=5, 
+#                  maskFl='catalogs_output/Detected1yr_RMS0p18_VolLim_20to80deg_zmax0p8_chan5kms_rank0.npy')
 #   SNRint_fromFile('catalogs_output/VolLim_20to60deg_zmin0p4_zmax1_MHI9to12.npy_rank1.npy', RMS=0.08, plt=False, 
 #                  maskFl='catalogs_output/Detected_VolLim_RMS0p08_20to80deg_z0p4to1_MHI9to12_new.npy')
 #    SNRint_fromFile('catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', RMS=0.1, plt=False, maskFl='catalogs_output/DetectedRMS0p1_sigma6_VolLim_20to60deg_zmax0p1.npy')

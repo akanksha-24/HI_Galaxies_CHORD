@@ -186,9 +186,9 @@ def SNRint(f, Sf, z, W50, MHI, D_C, obs_yr=5):
     W50_broad = W50_broadened(W50)
     Wf = gf.width_vel2freq(del_Vrest=W50_broadened(W50_broad))
 
-    chan_mask = Sf > RMS_mJy*1e-3*3
+    chan_mask = Sf > RMS_mJy*1e-3
     S_int = integrate_profile(f[chan_mask], Sf[chan_mask]) # in Jy*MHz
-    N_chans = np.sum(Sf > RMS_mJy*1e-3*3)
+    N_chans = np.sum(Sf > RMS_mJy*1e-3)
     SNRint = S_int / (RMS_mJy*upchan_res*1e-9*np.sqrt(N_chans))
     return SNRint
 
@@ -247,13 +247,13 @@ def Save_Spectra(catalog_fl, size=None):
     if size is None:
         size = catalog.shape[1]
 
-    MHI = 10**catalog[0]
+    MHI = catalog[0]
     W50 = catalog[3]
     D = catalog[6]
     z = catalog[8]
 
     SNR_int = Generate_Spectra(size, MHI, W50, D, z)
-    np.save("catalogs_output/Spectra_SNR_int_z0p1.npy", SNR_int)
+    np.save("catalogs_output/Spectra_SNR_int_D200_sigma1.npy", SNR_int)
     #np.save("VolLim_20to60deg_Dmax100_spectra.npy", np.asarray([V, S_broad]))
     #MHI_res = np.log10(final_M) - np.log10(MHI)
     #plt.figure()
@@ -261,4 +261,4 @@ def Save_Spectra(catalog_fl, size=None):
     #plt.show()
 
 if __name__ == "__main__":
-    Save_Spectra(catalog_fl='catalogs_output/VolLim_20to60deg_zmax0p1_rank0.npy', size=None)
+    Save_Spectra(catalog_fl='catalogs_output/VolLim_20to60deg_Dmax200_rank0.npy', size=None)
