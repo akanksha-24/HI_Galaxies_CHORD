@@ -14,6 +14,10 @@ phi_s=4.5e-3
 M_s=10**9.94 
 alpha=-1.25
 
+del_alpha = 0.1 
+del_M_s=10**9.94*np.log(10)*0.051
+del_phi_s=np.sqrt(0.2**2 + 0.8**2)*1e-3
+
 MHI_grid = np.logspace(5,11,100000)
 
 #Constant for MHI calculation:

@@ -252,6 +252,7 @@ def recover_HIMF(catalog_fl, Vollim=False, mask_fl='', RMS=0.1, sigma=6, nbins=3
         plt.figure(figsize=[6,4],dpi=300)
         if plotWidths==False:
             plt.plot(np.log10(MHI_grid), np.log10(JonesHIMF), label='HIMF - drawn from, Jones2018') # HIMF
+            #plt.fill_between(np.log10(MHI_grid))
             plt.scatter(bin_centers, np.log10(phi), s=8, label='HIMF - recovered', color='black') # from sample
             plt.ylabel('$\phi(M_{HI})$')
             plt.xlabel('log(M$_{HI}$/M$_{\odot}$)')

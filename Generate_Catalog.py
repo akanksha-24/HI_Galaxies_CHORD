@@ -130,6 +130,7 @@ def Gen_Catalog(zmax, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
     if rank == 0:
         print(f"max redshift is {zmax}")
     z, D, V, dV = gf.comoving_volume(zmin=zmin, zmax=zmax, zstep=z_step, solidang=solidang)
+    print("Max distance is ", np.max(D))
 
     #Split work among ranks
     all_indices = np.arange(len(dV))
@@ -292,9 +293,9 @@ def load_catalogParams(catalog_file):
     z = cat[8]
     return MHI, Vrot, i, W_50, ra, dec, D, Vol, z 
 
-# if __name__ == "__main__":
-#     Gen_Catalog(zmax=0.05, Dmax=110, npt=100, dec1=20, dec2=80, MHImin=5, MHImax=12, Fluxlim=False, 
-#                 flname='catalogs_output/VolLim_20to80deg_Dmax200_MHImatchmocksim.npy', dtype=np.float64)
+if __name__ == "__main__":
+    Gen_Catalog(zmax=0.0095, dec1=20, dec2=50, MHImin=5, MHImax=12, Fluxlim=False, 
+                flname='catalogs_output/VolLim_20to50deg_Dmax40.npy', dtype=np.float64)
     #LoadALFALFA()
     #Gen_Catalog(zmax=0.8, npt=100000, dec1=20, dec2=80, Fluxlim=False, flname='catalogs_output/VolLim_20to80deg_zmax0p8', dtype=np.float64)
     #Gen_Catalog(zmin=0.4, zmax=1, npt=10000, dec1=20, dec2=80, Fluxlim=False, MHImin=9, MHImax=12,
