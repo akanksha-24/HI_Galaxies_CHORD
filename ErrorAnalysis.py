@@ -50,7 +50,7 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6):
         z = catalog[8]
         W50_broad = W50_broadened(W50)
         RMS_mJy = RMS_fromDays(days=5*365/24, decl=np.deg2rad(20), z=z, nu=upchan_res*u.Hz).value
-        print("RMS values are", RMS_mJy)
+        #print("RMS values are", RMS_mJy)
         SNR = SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=upchan_res)
         mask = SNR > 6
         #np.save('detected_test.npy', catalog[:,mask])
@@ -59,15 +59,15 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6):
         phi[i] = counts_Vcorr/binwidth
         counts, _ = np.histogram(np.log10(MHI[mask]), bins=bins)
         Counts[i] = counts
-        print("Counts is ", Counts[i])
-        plt.scatter(bin_centers, np.log10(phi[i]))
+        #print("Counts is ", Counts[i])
+        #plt.scatter(bin_centers, np.log10(phi[i]))
         #recover_HIMF(catalog_fl='detected_test.npy', Vollim=False, RMS=RMS_mJy, sigma=6, bins=bins, figname='Plots/test_detections.png')
-    plt.savefig('Plots/HIMF_trials3.png')
+    #plt.savefig('Plots/HIMF_trials3.png')
     
 
-    #np.save('catalogs_output/phi_counts_z0p1_1000.npy', np.asarray([phi, Counts]))
+    np.save('catalogs_output/phi_counts_z0p3to0p7_50.npy', np.asarray([phi, Counts]))
     #arr = np.load('catalogs_output/phi_counts.npy')
     #print(arr.shape)
     
 if __name__ == "__main__":
-    MonteCarlo_HIMF(trials=3, zmax=0.7, zmin=0.3)
+    MonteCarlo_HIMF(trials=50, zmax=0.7, zmin=0.3)
