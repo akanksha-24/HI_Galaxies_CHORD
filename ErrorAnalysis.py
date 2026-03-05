@@ -54,7 +54,7 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6):
         SNR = SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=upchan_res)
         mask = SNR > 6
         #np.save('detected_test.npy', catalog[:,mask])
-        Vmax = Vmax_corr(MHI[mask], z[mask], RMS_mJy, W50_broad[mask], chan_width=upchan_res, sigma=sigma, solidang=solidang)
+        Vmax = Vmax_corr(MHI[mask], z[mask], RMS_mJy[mask], W50_broad[mask], chan_width=upchan_res, sigma=sigma, solidang=solidang)
         counts_Vcorr, _ = np.histogram(np.log10(MHI[mask]), bins=bins, weights=1/Vmax)
         phi[i] = counts_Vcorr/binwidth
         counts, _ = np.histogram(np.log10(MHI[mask]), bins=bins)
@@ -69,7 +69,5 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6):
     #arr = np.load('catalogs_output/phi_counts.npy')
     #print(arr.shape)
     
-    
-
 if __name__ == "__main__":
     MonteCarlo_HIMF(trials=3, zmax=0.7, zmin=0.3)
