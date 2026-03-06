@@ -8,7 +8,35 @@ import os
 #import matplotlib.pyplot as plt
 import time
 from mpi4py import MPI
-import CHORD_Sensitivity as chord
+from CHORD_Sensitivity import *
+from Gaussian_Estimate import *
+from Galaxy_Functions import *
+from ErrorAnalysis import *
+
+def Survey_detections(cat_fl, detections_fl):
+    upchan_res = width_vel2freq(del_Vrest=5)
+    catalog = np.load(cat_fl)
+    bins = np.linspace(5, 11, 31)
+    binwidth = (bins[1:])-(bins[:-1])
+    MHI = catalog[0]
+    W50 = catalog[3]
+    D = catalog[6]
+    z = catalog[8]
+    W50_broad = W50_broadened(W50)
+    RMS_mJy = RMS_fromDays(days=5*365/24, decl=np.deg2rad(20), z=z, nu=upchan_res*u.Hz).value
+    SNR = SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=upchan_res)
+    solidang = solid_angle(dec1=20, dec2=80, ra1=0, ra2=360)
+    sigma=6
+    mask = SNR > sigma
+    Vmax = Vmax_corr(MHI[mask], z[mask], RMS_mJy[mask], W50_broad[mask], chan_width=upchan_res, sigma=sigma, solidang=solidang)
+    counts_Vcorr, _ = np.histogram(np.log10(MHI[mask]), bins=bins, weights=1/Vmax)
+    print(counts_Vcorr.shape)
+    print(bins.shape)
+    phi = counts_Vcorr/binwidth
+    counts, _ = np.histogram(np.log10(MHI[mask]), bins=bins)
+    Counts = counts
+    np.save('catalogs_output/phi_counts_Dmax40_5yr.npy', np.asarray([phi, Counts]))
+    #np.save(detections_fl, Detecions)
 
 def SNR_detections(MHI, W50, z, RMS, sigma=6, chan_width=gf.chan_width):
     RMS = (RMS*u.mJy).to_value(u.Jy)
@@ -142,7 +170,8 @@ def compareCatalogs(catalog1, catalog2, RMS, sigma=6, plt=True, figname='', titl
         #plot.Detection_compareCats(MHI1=MHI1[mask1], MHI2=MHI2[mask2], figname=figname, title=title)
         plot.Detection_compare_Decs(MHI1[mask1], MHI2[mask2], Dec1=Dec1[mask1], Dec2=Dec2[mask2], figname=figname, title=title)
 
-#if __name__ == "__main__":
+if __name__ == "__main__":
+    Survey_detections(cat_fl='catalogs_output/VolLim_20to80deg_Dmax40.npy_rank0.npy', detections_fl='Detections_1yr_20to50deg_Dmax40.npy')
     # apply_ALFboundaries(catalog_file='DetectionsALFALFA_MockSim_20to80deg_Dmax200.npy', 
     #                     maskFl='catalogs_output/DetectionsALFALFA_MockSim_20to80deg_Dmax200_ALFboundaries.npy')
     # apply_ALFboundaries(catalog_file='DetectionsALFALFA_20to80deg_Dmax200.npy', 

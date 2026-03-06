@@ -17,10 +17,11 @@ def choose_SchechParams(alpha_=-1.25, del_alpha=0.1, M_s_=10**9.94, del_M_s=10**
 def Vmax_corr(MHI, z, RMS_mJy, W50_broad, chan_width, sigma, solidang):
     D = cosmo.comoving_distance(z).to_value(u.Mpc)
     Dsurvey = np.max(D)
+    Dmin = np.min(D)
     Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=W50_broad)
     Dmax_comov = Dmax / (1 + z)
     Dmax_comov = np.minimum(Dmax_comov, Dsurvey)
-    Vmax = VolumeFromDist(Dmax_comov, solidang=solidang)
+    Vmax = VolumeFromDist(Dmax_comov, solidang=solidang, Dmin=Dmin)
     return Vmax
 
 def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6):
@@ -60,13 +61,13 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6):
         counts, _ = np.histogram(np.log10(MHI[mask]), bins=bins)
         Counts[i] = counts
         #print("Counts is ", Counts[i])
-        #plt.scatter(bin_centers, np.log10(phi[i]))
+        plt.scatter(bin_centers, np.log10(phi[i]))
         #recover_HIMF(catalog_fl='detected_test.npy', Vollim=False, RMS=RMS_mJy, sigma=6, bins=bins, figname='Plots/test_detections.png')
-    #plt.savefig('Plots/HIMF_trials3.png')
+    plt.savefig('Plots/HIMF_trials3.png')
     
-    np.save('catalogs_output/phi_counts_z0p3to0p7_100.npy', np.asarray([phi, Counts]))
+    #np.save('catalogs_output/phi_counts_z0p3to0p7_100.npy', np.asarray([phi, Counts]))
     #arr = np.load('catalogs_output/phi_counts.npy')
     #print(arr.shape)
     
 if __name__ == "__main__":
-    MonteCarlo_HIMF(trials=100, zmax=0.7, zmin=0.3)
+    MonteCarlo_HIMF(trials=4, zmax=0.7, zmin=0.3)
