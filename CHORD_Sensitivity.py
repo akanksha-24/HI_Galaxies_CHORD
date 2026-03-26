@@ -16,8 +16,8 @@ Aeff=eff*(np.pi*(D/2)**2) * u.m**2
 def RMS_fromDays(days, decl, nu, z=0, N=512, PB=True):
     omega = 360 / (23.9345 * 3600) * u.deg / u.s
     FWHM_PB = np.rad2deg(1.2*0.21*(1+z)/D) * u.deg
-    print("FWHM PB is", FWHM_PB)
-    sigma = ((2*c.k_B*Tsys/Aeff)*np.sqrt(omega*np.cos(decl)/(N*(N-1)*nu*FWHM_PB*days))).to(u.mJy)
+    #print("FWHM PB is", FWHM_PB)
+    sigma = ((2*c.k_B*Tsys/Aeff)*np.sqrt(omega*np.cos(decl)/(N*(N-1)*nu*FWHM_PB*days))).to_value(u.mJy)
     return sigma
 
 def native_freso(f_low=0, f_high=1500):
@@ -102,7 +102,7 @@ def noise_cuts(catalog_fl, bandwidth, obs_length, nstrips, sigma=5, flname='', f
 
     return np.log10(MHI_masked) 
 
-def build_survey(switch_int, obs_years, beam_sep=2.5, start=20, end=80, beam_centers=None):
+def build_survey(obs_years, z, switch_int=7, beam_sep=2.5, start=20, end=80, beam_centers=None):
     if beam_centers is None:
         beam_centers = np.deg2rad(np.arange(start,end+beam_sep,beam_sep)) # radians
     nstrips = len(beam_centers)
@@ -119,9 +119,10 @@ def build_survey(switch_int, obs_years, beam_sep=2.5, start=20, end=80, beam_cen
     #constant = np.cos(beam_centers)/time_strip
     #print(constant)
     nu = width_vel2freq(5) * u.Hz
-    RMS = RMS_fromDays(days=time_strip, decl=beam_centers, nu=nu)
-    print(RMS)
-    return time_strip, RMS, beam_centers
+    #RMS = RMS_fromDays(days=time_strip, decl=beam_centers, nu=nu)
+    #print("RMS is ", RMS) # in mJy
+    RMS_z = RMS_fromDays(days=time_strip[0], decl=beam_centers[0], nu=nu, z=z)
+    return time_strip, RMS_z, beam_centers
 
 #noise_cuts(catalog_fl="catalogs_output/VolLim_20to60deg_Dmax200.npy", bandwidth=38, obs_length=5*u.year, nstrips=20,
 #           flname="catalogs_output/Sflux_20to60deg_Dmax200.npy")
