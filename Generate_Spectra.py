@@ -24,13 +24,17 @@ upchan_res = gf.width_vel2freq(del_Vrest=5) # for 5 km/s wide channels
 # need to fix
 RMS_mJy = time2RMS(days=5*365/24, decl=np.deg2rad(20), nu=upchan_res*u.Hz).value
 
-def Busy_general(x, a, b1, b2, xe, xp, c, w):
+def Busy_general(x, a, b1, b2, xe, xp, c, w, n):
     ''' This is the functional definition for a General Busy Function:
         Reference: https://ui.adsabs.harvard.edu/abs/2014MNRAS.438.1176W/abstract (Section 4.1, Equation 4)'''
     
     err_p = special.erf(b1*(w+x-xe)) + 1
     err_m = special.erf(b2*(w-x+xe)) + 1
-    pbola = (c*((x-xp)**2)) + 1
+    pbola = (c*(np.abs(x-xp)**n)) + 1
+
+    # plt.figure()
+    # plt.plot(x, (a/4)*err_p*err_m*pbola)
+    # plt.show()
     
     return (a/4)*err_p*err_m*pbola
 
@@ -55,17 +59,23 @@ def get_MHI_freq(f, S, z):
     return 49.7 * (D_L**2) * int_S * 1e6 # in Hz*Jy
 
 
-def find_FWHM(x, y, level=0.5):
-    ''' Helper function which finds the roots of the HI profile at the FWHM, to set to W50 width. 
-    Returns an array of all roots r[] found where the FWHM width is r[-1] - r[0] '''
+# def find_FWHM(x, y, level=0.5):
+#     ''' Helper function which finds the roots of the HI profile at the FWHM, to set to W50 width. 
+#     Returns an array of all roots r[] found where the FWHM width is r[-1] - r[0] '''
 
-    spline = UnivariateSpline(x, y-(np.max(y)*level), s=0)
-    roots = spline.roots() 
-    FWHM = roots[-1] - roots[0]
-    if len(roots) < 2:
-        return np.nan, roots  # no valid FWHM found
-    return FWHM, roots
-    
+#     spline = UnivariateSpline(x, y-(np.max(y)*level), s=0)
+#     roots = spline.roots() 
+#     FWHM = roots[-1] - roots[0]
+#     if len(roots) < 2:
+#         return np.nan, roots  # no valid FWHM found
+#     return FWHM, roots
+
+def find_FWHM(x,y, level=0.5):
+    profile_idx = np.argwhere(y > level*np.max(y))[:,0]
+    width = x[np.max(profile_idx)] - x[np.min(profile_idx)]
+    roots = [x[np.min(profile_idx)],x[np.max(profile_idx)]]
+    return width, roots
+
 def assign_units(x, B, W50, D, z, MHI_desired, Vlim=50, thermal_broaden=True):
     '''assigns units of velocity (km/s) vs. Flux density (Jy)'''
 
@@ -199,7 +209,7 @@ def SNRint(f, Sf, z, W50, MHI, D_C, obs_yr=5):
     #SNR_MJ = MHI*np.sqrt(f_smo)/(RMS_mJy*W50_broad*235.6*D_C**2)
     #print("integrated singal to noise by MJ is ", SNR_MJ)
 
-def Generate_Spectra(size, MHI, W50, D_C, z, a=1, w=1, b1=None, b2=None, c=None, xe=None, xp=None, thermal_broaden=True):
+def Generate_Spectra(size, MHI, W50, D_C, z, a=1, w=1, b1=None, b2=None, c=None, xe=None, xp=None, n=None, thermal_broaden=True):
     ''' Main function which generates an HI Spectrum. 
     The shape of the busy function (specified by a, b1, b2, c) is randomly generated (unless otherwise specified). 
     The area under the profile is set by MHI. 
@@ -210,21 +220,22 @@ def Generate_Spectra(size, MHI, W50, D_C, z, a=1, w=1, b1=None, b2=None, c=None,
     start = time.time()
 
     #W = VHI*2*np.sin(i) # W_50       
-    x = np.linspace(-10, 10, 10000).astype(np.float32)  # unitless axes used in generalized busy function definition
+    x = np.linspace(-20, 20, 10000).astype(np.float32)  # unitless axes used in generalized busy function definition
 
     D_L = (1+z)*D_C
 
     if b1==None: b1 = np.random.uniform(1, 5, size=size)
     if b2==None: b2 = np.random.uniform(1, 5, size=size)
     if c==None: c = np.random.uniform(0, 4, size=size)
-    if xe==None: xe = np.random.uniform(-0.1, 0.1, size=size)
-    if xp==None: xp = np.random.uniform(-0.1, 0.1, size=size)
+    if xe==None: xe = 0 #np.random.uniform(-0.1, 0.1, size=size)
+    if xp==None: xp =  0 #np.random.uniform(-0.1, 0.1, size=size)
+    if n==None: n = np.random.uniform(1, 4, size=size) # n=odd number results in negative values, n=4 is too broad
 
     SNR_int = []
 
     for i in np.arange(size):
         #print(i)
-        B = Busy_general(x, a, b1[i], b2[i], xe[i], xp[i], c[i], w)
+        B = Busy_general(x, a, b1[i], b2[i], xe[i], xp[i], c[i], w, n[i])
         V, S = assign_units(x, B, W50[i], D_L[i], z[i], MHI_desired=MHI[i])
         f, Sf = assign_freqUnits(x, B, W50[i], D_L[i], z[i], MHI_desired=MHI[i])
         f_V = gf.convert_f(V, z[i])
@@ -239,8 +250,8 @@ def Generate_Spectra(size, MHI, W50, D_C, z, a=1, w=1, b1=None, b2=None, c=None,
 
     end = time.time()
     #print(f"Runtime: {end - start:.3f} seconds")
-    return SNR_int
-    #return final_M, V, S#, freq
+    #return SNR_int
+    return final_M, V, S, SNR_int#, freq
 
 def Save_Spectra(catalog_fl, size=None):
     catalog = np.load(catalog_fl)

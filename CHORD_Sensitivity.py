@@ -4,6 +4,7 @@ import astropy.constants as c
 import Galaxy_Functions as gf
 import time
 import matplotlib.pyplot as plt
+from Galaxy_Functions import *
 
 D=6
 Tsys=30*u.K
@@ -100,6 +101,27 @@ def noise_cuts(catalog_fl, bandwidth, obs_length, nstrips, sigma=5, flname='', f
     plt.show()
 
     return np.log10(MHI_masked) 
+
+def build_survey(switch_int, obs_years, beam_sep=2.5, start=20, end=80, beam_centers=None):
+    if beam_centers is None:
+        beam_centers = np.deg2rad(np.arange(start,end+beam_sep,beam_sep)) # radians
+    nstrips = len(beam_centers)
+    switch_time = switch_int*nstrips
+    total_time = obs_years*365-switch_time
+    obs_strip = total_time/nstrips
+    time_strip = obs_strip * np.cos(beam_centers)
+    timespent = np.sum(time_strip)
+    while np.ceil(timespent) < total_time:
+        timeleft = (total_time - timespent)/nstrips
+        left_strip = timeleft * np.cos(beam_centers)
+        time_strip = time_strip + left_strip
+        timespent = np.sum(time_strip)
+    #constant = np.cos(beam_centers)/time_strip
+    #print(constant)
+    nu = width_vel2freq(5) * u.Hz
+    RMS = RMS_fromDays(days=time_strip, decl=beam_centers, nu=nu)
+    print(RMS)
+    return time_strip, RMS, beam_centers
 
 #noise_cuts(catalog_fl="catalogs_output/VolLim_20to60deg_Dmax200.npy", bandwidth=38, obs_length=5*u.year, nstrips=20,
 #           flname="catalogs_output/Sflux_20to60deg_Dmax200.npy")

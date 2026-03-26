@@ -15,8 +15,8 @@ from CHORD_Sensitivity import *
 
 upchan_res = gf.width_vel2freq(del_Vrest=5) # u.Hz
 
-RMS_5yr = time2RMS(days=5*365/20, decl=np.deg2rad(45), nu=upchan_res*u.Hz).value
-RMS_1yr = time2RMS(days=365/20, decl=np.deg2rad(45), nu=upchan_res*u.Hz).value
+#RMS_5yr = time2RMS(days=5*365/20, decl=np.deg2rad(45), nu=upchan_res*u.Hz).value
+#RMS_1yr = time2RMS(days=365/20, decl=np.deg2rad(45), nu=upchan_res*u.Hz).value
 
 def param_distributions(catalog, n_bins=20, flname=''):
     catalog = np.load(catalog)
@@ -572,12 +572,14 @@ def W50z_Plane(RMS=0.1, sigma=6, nearby=False):
     plt.show()
 
 def W50z_Plane_subplots(RMS=0.1, sigma=6):
-    #RMS_1year = 0.18
-    #RMS_5year = 0.08
     fig, ax = plt.subplots(1, 2, figsize=[12,4.5], dpi=300)
     plt.subplots_adjust(wspace=0.15)
     lg_W50 = np.linspace(1, 2.7, 1000)
     z = np.linspace(0,1,10000)
+    #RMS_5yr = RMS_fromDays(days=5*365/24, decl=np.deg2rad(20), z=z, nu=upchan_res*u.Hz).value
+    #RMS_1yr = RMS_fromDays(days=365/12, decl=np.deg2rad(20), z=z, nu=upchan_res*u.Hz).value
+    RMS_5yr = 0.30
+    RMS_1yr = 0.61
     z_2d, lgW50_2d = np.meshgrid(z, lg_W50)
     D_2d = gf.Comoving_Dist(z_2d).to_value(u.Mpc)
     MHI_2d_5year = gf.estimate_MHImax(z=z_2d, sigma=sigma, RMS_chan=RMS_5yr, DeltaV=10**(lgW50_2d), chan_width=upchan_res)
@@ -586,7 +588,7 @@ def W50z_Plane_subplots(RMS=0.1, sigma=6):
     levels_5yr = [[5,6,7,7.5,8],
             [9,10,10.5,11]]
 
-    manual_locations5 = [[(0.0, 1.3), (20, 1.35), (60, 1.4), (100, 1.5), (120, 2.0)],
+    manual_locations5 = [[(0.0, 1.3), (20, 1.35), (40, 1.4), (80, 1.5), (120, 2.0)],
                     [(0.05, 1.2), (0.3, 1.3), (0.48, 1.4), (0.75, 1.5)]]
 
     levels_1yr = [[6,7,7.5,8],
@@ -595,7 +597,6 @@ def W50z_Plane_subplots(RMS=0.1, sigma=6):
     manual_locations1 = [[(5, 1.6), (20, 1.65), (40, 1.75), (80, 1.85)],
                     [(0.1, 1.9), (0.3, 1.95), (0.55, 2.1), (0.85, 2.3)]]
     
-
 
     im = ax[0].imshow(np.log10(MHI_2d_5year), extent=[D_2d.min(), D_2d.max(), lg_W50.min(), lg_W50.max()], origin='lower', aspect='auto')  
     ax[0].set_xlabel('Distance (Mpc)')
@@ -649,7 +650,7 @@ def W50z_Plane_subplots(RMS=0.1, sigma=6):
 
 
     #plt.tight_layout()
-    plt.savefig("Plots/DistanceDetect_subplots_new.png")
+    plt.savefig("Plots/DistanceDetect_withScanTime.pdf")
 
 def W50z_Plane_subplots_zD(RMS=0.1, sigma=6):
     RMS_1year = 0.18
@@ -837,6 +838,46 @@ def LowM_Distance(catalog):
     plt.savefig('Plots/Dwarf_Distances.png')
     #plt.show()
 
+def survey_scantime():
+    fig, ax = plt.subplots(2, 1, figsize=[5,8], dpi=300)
+    obs_year = [5,1]
+    stop = [80,50]
+    switch = 7
+    start=20
+    for i in range(2):
+        if i==0:
+            beam_sep = 3
+            beam_centers = np.concatenate([np.arange(start,stop[i]+beam_sep,beam_sep)[::-1], np.arange(start+beam_sep/2,stop[i]+beam_sep/2,beam_sep)])
+            print(beam_centers)
+            time, RMS, beam_centers = build_survey(switch_int=switch, obs_years=obs_year[i], start=20, end=stop[i], beam_centers=np.deg2rad(beam_centers))
+        else:
+            time, RMS, beam_centers = build_survey(switch_int=switch, obs_years=obs_year[i], start=20, end=stop[i])
+        timefull = (time + switch)/365
+        time = time/365
+        cumultime = np.cumsum(timefull)
+        left = np.zeros(cumultime.shape[0])
+        left[1:] = cumultime[:-1]
+        cumulswitch = np.cumsum(time)
+        if i==0:
+            ax[i].barh(np.rad2deg(beam_centers), timefull, left=left, height=2.5, color='green')
+            ax[i].barh(np.rad2deg(beam_centers), switch/365, left=(cumultime-switch/365), height=2.5, color='orange')
+            ax[i].set_title(f'{obs_year[i]} Year Survey, Sensitivity={RMS[0]/np.sqrt(2):.2f}')
+        else:
+            ax[i].barh(np.rad2deg(beam_centers), 12*timefull, left=12*left, height=2.5, color='green', label='Observing Time')
+            ax[i].barh(np.rad2deg(beam_centers), 12*switch/365, left=12*(cumultime-switch/365), height=2.5, color='orange', label='Re-pointing Time')
+            ax[i].set_title(f'{obs_year[i]} Year Survey, Sensitivity={RMS[0]:.2f}')
+        ax[i].grid(True, linewidth=0.4)
+        ax[i].set_ylabel('Declination Pointing (Deg)')
+        
+    ax[0].set_xlabel('Time (years)')
+    ax[1].set_xlabel('Time (Months)')
+    ax[1].legend()
+    plt.tight_layout()
+    plt.savefig('Plots/scan_stratergy.pdf')
+
+#left[1:] = cumsum
+#plt.barh(np.rad2deg(beam_centers), time/365, left)
+
 
 # def Forecast_counts(MHI_lg, mask):
 #     catalog = np.load(catalog)
@@ -854,7 +895,8 @@ def LowM_Distance(catalog):
 #         plt.savefig(flname+'_'+extn[i]+'.png')
 
 if __name__ == "__main__":
-    W50z_Plane_subplots()
+    survey_scantime()
+    #W50z_Plane_subplots()
     #check_Spectra()
     #W50z_Plane(nearby=True)
     #LowM_Distance(catalog='catalogs_output/Detected_RMS0p08_VolLim_20to80deg_zmax0p8_full.npy')

@@ -32,26 +32,30 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6):
     bins = np.linspace(5, 11, 31)
     binwidth = (bins[1:])-(bins[:-1])
     bin_centers = mid_bin(bins)
+
+    z_bins = np.linspace(0,0.8,100)
     
     phi = np.zeros((trials, len(bins)-1))
     Counts = np.zeros((trials, len(bins)-1))
+    z_Counts = np.zeros((trials, len(z_bins)-1))
 
-    plt.figure()
     for i in np.arange(trials):
         print(i)
         alpha, M_s, phi_s = choose_SchechParams()
         HIMF = schechter_fit_lg(MHI_grid, phi_s=phi_s, M_s=M_s, alpha=alpha)
+        plt.figure()
         plt.plot(np.log10(MHI_grid), np.log10(HIMF))
         #plt.plot(np.log10(MHI_grid), np.log10(HIMF_Jones2018(MHI=MHI_grid)), label='HIMF - drawn from, Jones2018')
         catalog = Gen_Catalog(zmax=zmax, dec1=dec1, dec2=dec2, zmin=zmin, save=False, 
-                              phi_s=phi_s, alpha=alpha, M_s=M_s, MHImin=9, MHImax=12)
+                              phi_s=phi_s, alpha=alpha, M_s=M_s, Fluxlim=True)
         MHI = catalog[0]
         W50 = catalog[3]
         D = catalog[6]
         z = catalog[8]
         W50_broad = W50_broadened(W50)
-        RMS_mJy = RMS_fromDays(days=5*365/24, decl=np.deg2rad(20), z=z, nu=upchan_res*u.Hz).value
+        #RMS_mJy = RMS_fromDays(days=5*365/24, decl=np.deg2rad(20), z=z, nu=upchan_res*u.Hz).value
         #print("RMS values are", RMS_mJy)
+        _, RMS_mJy, _ = build_survey(switch_int=7, obs_years=1, z=z, start=dec1, end=dec2)
         SNR = SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=upchan_res)
         mask = SNR > 6
         #np.save('detected_test.npy', catalog[:,mask])
@@ -60,14 +64,21 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6):
         phi[i] = counts_Vcorr/binwidth
         counts, _ = np.histogram(np.log10(MHI[mask]), bins=bins)
         Counts[i] = counts
+        z_Counts[i], _ = np.histogram(z[mask], bins=z_bins)
         #print("Counts is ", Counts[i])
         plt.scatter(bin_centers, np.log10(phi[i]))
+        plt.savefig('trial1_phicounts.png')
+        plt.figure()
+        plt.plot(mid_bin(z_bins), z_Counts[i])
+        plt.yscale('log')
+        plt.savefig('trial1_counts_z.png')
         #recover_HIMF(catalog_fl='detected_test.npy', Vollim=False, RMS=RMS_mJy, sigma=6, bins=bins, figname='Plots/test_detections.png')
-    plt.savefig('Plots/HIMF_trials3.png')
+    #plt.savefig('Plots/HIMF_trials3.png')
     
-    #np.save('catalogs_output/phi_counts_z0p3to0p7_100.npy', np.asarray([phi, Counts]))
+    np.save('catalogs_output/phi_counts_z0p8_trial1.npy', np.asarray([phi, Counts]))
+    np.save('catalogs_output/counts_z0p8_trial1.npy', z_Counts)
     #arr = np.load('catalogs_output/phi_counts.npy')
     #print(arr.shape)
     
 if __name__ == "__main__":
-    MonteCarlo_HIMF(trials=4, zmax=0.7, zmin=0.3)
+    MonteCarlo_HIMF(trials=1, zmax=0.8, zmin=0, dec1=20, dec2=50)
