@@ -5,7 +5,17 @@ import matplotlib.pyplot as plt
 from CHORD_Sensitivity import *
 from Gaussian_Estimate import *
 from Plotting import *
+import sys
+import signal
 
+exit_now = False
+
+def handler(signum, frame):
+    global exit_now
+    print("SLURM time limit approaching — saving and exiting...")
+    exit_now = True
+
+signal.signal(signal.SIGTERM, handler)
 
 def choose_SchechParams(alpha_=-1.25, del_alpha=0.1, M_s_=10**9.94, del_M_s=10**9.94*np.log(10)*0.051,
                         phi_s_=4.5e-3, del_phi_s=np.sqrt(0.2**2 + 0.8**2)*1e-3):
@@ -41,6 +51,15 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6):
 
     for i in np.arange(trials):
         print(i)
+        if exit_now:
+            print("Saving checkpoint before timeout...")
+            np.save('catalogs_output/phi_counts_z0p8_1yr_1000_until{i}.npy',
+                    np.asarray([phi, Counts]))
+            np.save('catalogs_output/counts_z0p8_1yr_1000_unit{i}.npy',
+                    z_Counts)
+            print("Done. Exiting.")
+            sys.exit(0)
+
         alpha, M_s, phi_s = choose_SchechParams()
         HIMF = schechter_fit_lg(MHI_grid, phi_s=phi_s, M_s=M_s, alpha=alpha)
         # plt.figure()
