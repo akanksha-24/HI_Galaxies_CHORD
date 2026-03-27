@@ -94,8 +94,8 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6):
         #recover_HIMF(catalog_fl='detected_test.npy', Vollim=False, RMS=RMS_mJy, sigma=6, bins=bins, figname='Plots/test_detections.png')
     #plt.savefig('Plots/HIMF_trials3.png')
     
-    np.save('catalogs_output/phi_counts_z0p8_1yr_1000.npy', np.asarray([phi, Counts]))
-    np.save('catalogs_output/counts_z0p8_1yr_1000.npy', z_Counts)
+    #np.save('catalogs_output/phi_counts_z0p8_1yr_1000.npy', np.asarray([phi, Counts]))
+    #np.save('catalogs_output/counts_z0p8_1yr_1000.npy', z_Counts)
     #arr = np.load('catalogs_output/phi_counts.npy')
     #print(arr.shape)
     
