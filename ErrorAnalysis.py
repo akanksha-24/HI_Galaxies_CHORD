@@ -15,8 +15,6 @@ def handler(signum, frame):
     print("SLURM time limit approaching — saving and exiting...")
     exit_now = True
 
-signal.signal(signal.SIGTERM, handler)
-
 def choose_SchechParams(alpha_=-1.25, del_alpha=0.1, M_s_=10**9.94, del_M_s=10**9.94*np.log(10)*0.051,
                         phi_s_=4.5e-3, del_phi_s=np.sqrt(0.2**2 + 0.8**2)*1e-3):
     alpha = np.random.normal(loc=alpha_, scale=del_alpha, size=1)
@@ -100,4 +98,5 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6):
     #print(arr.shape)
     
 if __name__ == "__main__":
+    signal.signal(signal.SIGUSR1, handler)
     MonteCarlo_HIMF(trials=1000, zmax=0.8, zmin=0, dec1=20, dec2=50)
