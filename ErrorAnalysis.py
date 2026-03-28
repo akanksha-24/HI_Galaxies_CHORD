@@ -32,7 +32,7 @@ def Vmax_corr(MHI, z, RMS_mJy, W50_broad, chan_width, sigma, solidang):
     Vmax = VolumeFromDist(Dmax_comov, solidang=solidang, Dmin=Dmin)
     return Vmax
 
-def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6):
+def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, obs_year=5):
     upchan_res = width_vel2freq(del_Vrest=5)
     #RMS_mJy = time2RMS(days=5*365/24, decl=np.deg2rad(20), nu=upchan_res*u.Hz).value
     solidang = solid_angle(dec1=dec1, dec2=dec2, ra1=0, ra2=360)
@@ -48,7 +48,7 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6):
     z_Counts = np.zeros((trials, len(z_bins)-1))
 
     for i in np.arange(trials):
-        # print(i)
+        print(i)
         # if exit_now:
         #     print("Saving checkpoint before timeout...")
         #     np.save('catalogs_output/phi_counts_z0p8_1yr_1000_until{i}.npy',
@@ -64,7 +64,7 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6):
         # plt.plot(np.log10(MHI_grid), np.log10(HIMF))
         #plt.plot(np.log10(MHI_grid), np.log10(HIMF_Jones2018(MHI=MHI_grid)), label='HIMF - drawn from, Jones2018')
         catalog = Gen_Catalog(zmax=zmax, dec1=dec1, dec2=dec2, zmin=zmin, save=False, 
-                              phi_s=phi_s, alpha=alpha, M_s=M_s, Fluxlim=True)
+                              phi_s=phi_s, alpha=alpha, M_s=M_s, Fluxlim=True, obs_year=obs_year)
         MHI = catalog[0]
         W50 = catalog[3]
         D = catalog[6]
@@ -72,7 +72,7 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6):
         W50_broad = W50_broadened(W50)
         #RMS_mJy = RMS_fromDays(days=5*365/24, decl=np.deg2rad(20), z=z, nu=upchan_res*u.Hz).value
         #print("RMS values are", RMS_mJy)
-        _, RMS_mJy, _ = build_survey(switch_int=7, obs_years=1, z=z, start=dec1, end=dec2)
+        _, RMS_mJy, _ = build_survey(switch_int=7, obs_years=obs_year, z=z, start=dec1, end=dec2)
         SNR = SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=upchan_res)
         mask = SNR > 6
         #np.save('detected_test.npy', catalog[:,mask])
@@ -103,4 +103,4 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6):
     
 if __name__ == "__main__":
 #    signal.signal(signal.SIGUSR1, handler)
-    MonteCarlo_HIMF(trials=1000, zmax=0.8, zmin=0, dec1=20, dec2=50)
+    MonteCarlo_HIMF(trials=1000, zmax=0.8, zmin=0, dec1=20, dec2=80, obs_year=5)

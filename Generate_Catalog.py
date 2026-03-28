@@ -11,6 +11,7 @@ import os
 import re
 import pandas as pd
 import Forecasting as fore
+from CHORD_Sensitivity import *
 
 def sample_HIMF(N, M_HI, phi_s=gf.phi_s, M_s=gf.M_s, alpha=gf.alpha): 
     # Compute Schechter PDF in log-space
@@ -108,7 +109,7 @@ def Gen_Catalog(zmax, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
                     noise=1e-4, vel_width=10, MHIres=10000,
                     draw=True, fltype='npy', flname='catalog.npy',
                     savelarge=True, dtype=np.float32, SNRint=False, sigma_int=6, RMS=0.2, save=True,
-                    phi_s=gf.phi_s, M_s=gf.M_s, alpha=gf.alpha):
+                    phi_s=gf.phi_s, M_s=gf.M_s, alpha=gf.alpha, obs_year=5):
     
     print("starting Job...")
     
@@ -126,7 +127,6 @@ def Gen_Catalog(zmax, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
     else:
         solidang = footprint.to(u.sr)
     
-
     if rank == 0:
         print(f"max redshift is {zmax}")
     z, D, V, dV = gf.comoving_volume(zmin=zmin, zmax=zmax, zstep=z_step, solidang=solidang)
@@ -146,9 +146,13 @@ def Gen_Catalog(zmax, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
 
     for i in rank_indices:
         if Fluxlim:
-            F_lim = sigma * noise
-            MHImin_i = np.log10(gf.S_toMHI(F_lim, vel_width, D[i], unitless=True))
+            #F_lim = sigma * noise
+            #MHImin_i = np.log10(gf.S_toMHI(F_lim, vel_width, D[i], unitless=True))
+            _, RMS_, _ = build_survey(obs_years=obs_year, z=z[i], start=dec1, end=dec2)
+            MHI_lim = gf.estimate_MHImax(z=z[i], sigma=6, RMS_chan=RMS_,  DeltaV=20, chan_width=gf.width_vel2freq(5))
+            MHImin_i = np.log10(MHI_lim) - 0.5
             MHImin_i = max(5, MHImin_i)
+            #print("MHImin is ", MHImin_i)
             MHI = np.logspace(MHImin_i, MHImax, MHIres)
             n = gf.galaxy_density(MHI, phi_s=phi_s, M_s=M_s, alpha=alpha)
 
