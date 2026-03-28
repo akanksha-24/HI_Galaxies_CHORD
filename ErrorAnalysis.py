@@ -84,8 +84,8 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
         z_Counts[i], _ = np.histogram(z[mask], bins=z_bins)
 
         if i % 10 == 0:
-            np.save(f'catalogs_output/phi_counts_checkpoint_1yr_z0p8_{i}.npy', np.asarray([phi, Counts]))
-            np.save(f'catalogs_output/z_counts_checkpoint_1yr_z0p8_{i}.npy', z_Counts)
+            np.save(f'catalogs_output/phi_counts_checkpoint_{obs_year}yr_z0p8_{i}.npy', np.asarray([phi, Counts]))
+            np.save(f'catalogs_output/z_counts_checkpoint_{obs_year}yr_z0p8_{i}.npy', z_Counts)
         #print("Counts is ", Counts[i])
         # plt.scatter(bin_centers, np.log10(phi[i]))
         # plt.savefig('Plots/trial1_phicounts.png')
