@@ -578,8 +578,10 @@ def W50z_Plane_subplots(RMS=0.1, sigma=6):
     z = np.linspace(0,1,10000)
     #RMS_5yr = RMS_fromDays(days=5*365/24, decl=np.deg2rad(20), z=z, nu=upchan_res*u.Hz).value
     #RMS_1yr = RMS_fromDays(days=365/12, decl=np.deg2rad(20), z=z, nu=upchan_res*u.Hz).value
-    RMS_5yr = 0.30
-    RMS_1yr = 0.61
+    _, RMS_5yr, _ = build_survey(obs_years=5, z=z)
+    print("5 year RMS is", RMS_5yr)
+    _, RMS_1yr, _ = build_survey(obs_years=1, z=z, end=50)
+    print("1 year RMS is", RMS_1yr)
     z_2d, lgW50_2d = np.meshgrid(z, lg_W50)
     D_2d = gf.Comoving_Dist(z_2d).to_value(u.Mpc)
     MHI_2d_5year = gf.estimate_MHImax(z=z_2d, sigma=sigma, RMS_chan=RMS_5yr, DeltaV=10**(lgW50_2d), chan_width=upchan_res)
@@ -895,8 +897,8 @@ def survey_scantime():
 #         plt.savefig(flname+'_'+extn[i]+'.png')
 
 if __name__ == "__main__":
-    survey_scantime()
-    #W50z_Plane_subplots()
+    #survey_scantime()
+    W50z_Plane_subplots()
     #check_Spectra()
     #W50z_Plane(nearby=True)
     #LowM_Distance(catalog='catalogs_output/Detected_RMS0p08_VolLim_20to80deg_zmax0p8_full.npy')

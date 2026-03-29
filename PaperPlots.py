@@ -127,26 +127,26 @@ def HIMF_Counts_err(err_cat, labels, ALF, RMS, showSurveys=True,
         phi = phi_counts[0]
         print("phi shape", phi.shape)
         Counts = phi_counts[1]
+        Counts_mean = np.mean(Counts, axis=0)
+        Counts_std = np.std(Counts, axis=0)
         print("Counts shape", Counts.shape)
-        phi[Counts<minCount] = np.nan
         # phi = np.where(phi > 0, phi, np.nan)
-        # phi_log = np.log10(phi)
+        phi_log = np.log10(phi)
 
-        # med_log = np.nanpercentile(phi_log, 50, axis=0)
-        # lo_log  = np.nanpercentile(phi_log, 16, axis=0)
-        # hi_log  = np.nanpercentile(phi_log, 84, axis=0)
-        # phi_med = 10**med_log
-        # phi_lo  = 10**lo_log
-        # phi_hi  = 10**hi_log
+        med_log = np.nanpercentile(phi_log, 50, axis=0)
+        lo_log  = np.nanpercentile(phi_log, 16, axis=0)
+        hi_log  = np.nanpercentile(phi_log, 84, axis=0)
+        phi_med = 10**med_log
+        phi_lo  = 10**lo_log
+        phi_hi  = 10**hi_log
+        phi_med[Counts_mean<minCount] = np.nan
         # yerr_lower = phi_med - phi_lo
         # yerr_upper = phi_hi - phi_med
         # # phi_mean = np.mean(phi, axis=0)
         # # phi_std = np.std(phi, axis=0)
         # # print(phi)
         # # print("standard deviation in phi is ", np.log10(phi_std))
-        # #phi_log = np.log10(phi_counts[0])
-        # Counts_mean = np.mean(Counts, axis=0)
-        # Counts_std = np.std(Counts, axis=0)
+        #phi_log = np.log10(phi_counts[0])
         #phi_med_log = np.nanpercentile(phi_log, 50, axis=0)
         #phi_lo_log  = np.nanpercentile(phi_log, 16, axis=0)
         #phi_hi_log  = np.nanpercentile(phi_log, 84, axis=0)
@@ -161,12 +161,12 @@ def HIMF_Counts_err(err_cat, labels, ALF, RMS, showSurveys=True,
         # capsize=3,
         # label='5 year Survey'
         # )
-        axs[0].scatter(mid_bins, phi, color=color[i], label=labels[i], s=6)
-        #axs[0].fill_between(mid_bins, phi_lo, phi_hi, alpha=0.3, color=color[0])
+        axs[0].scatter(mid_bins, phi_med, color=color[i], label=labels[i], s=6)
+        axs[0].fill_between(mid_bins, phi_lo, phi_hi, alpha=0.3, color=color[i])
         # axs[0].errorbar(mid_bins, phi_mean, yerr=phi_std,
         #                 fmt='.', ecolor='gray', capsize=3, elinewidth=1, markeredgewidth=0.3, color=color[0], label='5 year survey')
-        axs[1].step(mid_bins, Counts, color=color[i], label=labels[i], where='post')
-        #axs[1].fill_between(mid_bins, Counts_mean-Counts_std, Counts_mean+Counts_std, alpha=0.3, color=color[0], step='post')
+        axs[1].step(mid_bins, Counts_mean, color=color[i], label=labels[i], where='post')
+        axs[1].fill_between(mid_bins, Counts_mean-Counts_std, Counts_mean+Counts_std, alpha=0.3, color=color[i], step='post')
 
     axs[1].set_yscale('log')
     axs[0].set_yscale('log')
@@ -186,15 +186,15 @@ def HIMF_Counts_err(err_cat, labels, ALF, RMS, showSurveys=True,
     JonesHIMF = gf.HIMF_Jones2018(MHI=gf.MHI_grid)
     MaHIMF = gf.HIMF_Ma2024(MHI=gf.MHI_grid)
 
-    Jones_Max = gf.schechter_fit_lg(gf.MHI_grid, 
-                                    phi_s=gf.phi_s+gf.del_phi_s, 
-                                    M_s=gf.M_s+gf.del_M_s, 
-                                    alpha=gf.alpha+gf.del_alpha)
+    # Jones_Max = gf.schechter_fit_lg(gf.MHI_grid, 
+    #                                 phi_s=gf.phi_s+gf.del_phi_s, 
+    #                                 M_s=gf.M_s+gf.del_M_s, 
+    #                                 alpha=gf.alpha+gf.del_alpha)
     
-    Jones_Min = gf.schechter_fit_lg(gf.MHI_grid, 
-                                phi_s=gf.phi_s-gf.del_phi_s, 
-                                M_s=gf.M_s-gf.del_M_s, 
-                                alpha=gf.alpha-gf.del_alpha)
+    # Jones_Min = gf.schechter_fit_lg(gf.MHI_grid, 
+    #                             phi_s=gf.phi_s-gf.del_phi_s, 
+    #                             M_s=gf.M_s-gf.del_M_s, 
+    #                             alpha=gf.alpha-gf.del_alpha)
 
     axs[0].plot(np.log10(gf.MHI_grid), JonesHIMF, label='Jones+2018', color='gray', linewidth=1, linestyle='--') # HIMF
     axs[0].plot(np.log10(gf.MHI_grid), MaHIMF, label='Ma+2024', color='purple', linewidth=1, linestyle=':') # HIMF
@@ -215,7 +215,7 @@ def HIMF_Counts_err(err_cat, labels, ALF, RMS, showSurveys=True,
 
     plt.tight_layout()
     plt.subplots_adjust(hspace=0)
-    plt.savefig('Plots/PhiCounts_Dmax40.png')
+    plt.savefig('Plots/PhiCounts_error_z0p8.png')
     #plt.show()
 
 def Counts_err(err_cat):
@@ -382,7 +382,7 @@ def Show_Catalogs(catalogs):
 
 
 if __name__ == "__main__":
-    HIMF_Counts_err(err_cat=['catalogs_output/phi_counts_Dmax40_5yr.npy', 'catalogs_output/phi_counts_Dmax40_1yr.npy'], labels=['5 year', '1 year'], ALF=None, RMS=None, showSurveys=False, minCount=10)
+    HIMF_Counts_err(err_cat=['phi_counts_checkpoint_5yr_z0p8_990.npy', 'phi_counts_checkpoint_1yr_z0p8_250.npy'], labels=['5 year', '1 year'], ALF=None, RMS=None, showSurveys=True, minCount=10)
     #Counts_err(err_cat='phi_counts_z0p3to0p7_100.npy')
     #HIMF_Counts_err(err_cat='phi_counts_z0p3to0p7_100.npy', labels=None, ALF=None, RMS=None, showSurveys=False, minCount=10)
     #HIMF_Counts_err(err_cat='phi_counts_z0p1_100.npy', labels=None, ALF=None, RMS=None, showSurveys=True, minCount=10)

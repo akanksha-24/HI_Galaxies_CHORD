@@ -13,6 +13,9 @@ def W50_broadened(W50, sigma_disp=10):
     sigma_rot = FWHM2sigma(FWHM=W50)
     sigma_broadened = np.sqrt(sigma_rot**2 + sigma_disp**2) 
     W50_broad = sigma2FWHM(sigma_broadened)
+    #print("W50 broad 1 is ", W50_broad)
+    #W50_broad2 = np.sqrt(W50**2 + (2*np.sqrt(2*np.log(2))*10)**2)
+    #print("W50 broad 2 is ", W50_broad2)
     return W50_broad
 
 # def S21_Gaussian(S_peak, W50):

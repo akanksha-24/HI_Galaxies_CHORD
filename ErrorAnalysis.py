@@ -36,8 +36,8 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
     upchan_res = width_vel2freq(del_Vrest=5)
     #RMS_mJy = time2RMS(days=5*365/24, decl=np.deg2rad(20), nu=upchan_res*u.Hz).value
     solidang = solid_angle(dec1=dec1, dec2=dec2, ra1=0, ra2=360)
-    #print("solidang is ", solidang)
-    bins = np.linspace(5, 11, 31)
+    print("solidang is ", solidang)
+    bins = np.arange(5, 12.2, 0.2)
     binwidth = (bins[1:])-(bins[:-1])
     bin_centers = mid_bin(bins)
 
@@ -70,6 +70,9 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
         D = catalog[6]
         z = catalog[8]
         W50_broad = W50_broadened(W50)
+        dec = catalog[5]
+        print("max dec is ", np.max(dec))
+        print("min dec is ", np.min(dec))
         #RMS_mJy = RMS_fromDays(days=5*365/24, decl=np.deg2rad(20), z=z, nu=upchan_res*u.Hz).value
         #print("RMS values are", RMS_mJy)
         _, RMS_mJy, _ = build_survey(switch_int=7, obs_years=obs_year, z=z, start=dec1, end=dec2)
@@ -103,4 +106,4 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
     
 if __name__ == "__main__":
 #    signal.signal(signal.SIGUSR1, handler)
-    MonteCarlo_HIMF(trials=1000, zmax=0.8, zmin=0, dec1=20, dec2=80, obs_year=5)
+    MonteCarlo_HIMF(trials=1001, zmax=1, zmin=0, dec1=20, dec2=50, obs_year=1)
