@@ -37,11 +37,12 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
     #RMS_mJy = time2RMS(days=5*365/24, decl=np.deg2rad(20), nu=upchan_res*u.Hz).value
     solidang = solid_angle(dec1=dec1, dec2=dec2, ra1=0, ra2=360)
     print("solidang is ", solidang)
-    bins = np.arange(5, 12.2, 0.2)
+    bins = np.arange(4.9, 12.2, 0.2)
     binwidth = (bins[1:])-(bins[:-1])
     bin_centers = mid_bin(bins)
 
-    z_bins = np.linspace(0,0.8,100)
+    z_step = 0.008
+    z_bins = np.arange(-1*z_step/2, zmax+z_step, z_step)
     
     phi = np.zeros((trials, len(bins)-1))
     Counts = np.zeros((trials, len(bins)-1))
@@ -87,8 +88,8 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
         z_Counts[i], _ = np.histogram(z[mask], bins=z_bins)
 
         if i % 10 == 0:
-            np.save(f'catalogs_output/phi_counts_checkpoint_{obs_year}yr_z0p8_{i}.npy', np.asarray([phi, Counts]))
-            np.save(f'catalogs_output/z_counts_checkpoint_{obs_year}yr_z0p8_{i}.npy', z_Counts)
+            np.save(f'catalogs_output/phi_counts_checkpoint_{obs_year}yr_z{zmax}_{i}.npy', np.asarray([phi, Counts]))
+            np.save(f'catalogs_output/z_counts_checkpoint_{obs_year}yr_z{zmax}_{i}.npy', z_Counts)
         #print("Counts is ", Counts[i])
         # plt.scatter(bin_centers, np.log10(phi[i]))
         # plt.savefig('Plots/trial1_phicounts.png')

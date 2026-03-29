@@ -101,8 +101,8 @@ def HIMF_Counts_err(err_cat, labels, ALF, RMS, showSurveys=True,
 
     fig, axs = plt.subplots(2, 1, figsize=(5.5, 5), dpi=300, sharex=True)
     bins = np.linspace(5, 11, 31)
-    #mid_bins = 0.5*(bins[1:] + bins[:-1])
-    mid_bins = bins[:-1]
+    mid_bins = 0.5*(bins[1:] + bins[:-1])
+    #mid_bins = bins[:-1]
     print(mid_bins.shape)
     color = cm.get_cmap('Dark2', 7).colors
     #color = cm.rainbow(np.linspace(0, 1, len(catalogs)+5))
@@ -140,27 +140,7 @@ def HIMF_Counts_err(err_cat, labels, ALF, RMS, showSurveys=True,
         phi_lo  = 10**lo_log
         phi_hi  = 10**hi_log
         phi_med[Counts_mean<minCount] = np.nan
-        # yerr_lower = phi_med - phi_lo
-        # yerr_upper = phi_hi - phi_med
-        # # phi_mean = np.mean(phi, axis=0)
-        # # phi_std = np.std(phi, axis=0)
-        # # print(phi)
-        # # print("standard deviation in phi is ", np.log10(phi_std))
-        #phi_log = np.log10(phi_counts[0])
-        #phi_med_log = np.nanpercentile(phi_log, 50, axis=0)
-        #phi_lo_log  = np.nanpercentile(phi_log, 16, axis=0)
-        #phi_hi_log  = np.nanpercentile(phi_log, 84, axis=0)
 
-        # axs[0].errorbar(
-        # mid_bins,
-        # phi_med,
-        # yerr=[yerr_lower, yerr_upper],
-        # fmt='.',
-        # color=color[0],
-        # ecolor='gray',
-        # capsize=3,
-        # label='5 year Survey'
-        # )
         axs[0].scatter(mid_bins, phi_med, color=color[i], label=labels[i], s=6)
         axs[0].fill_between(mid_bins, phi_lo, phi_hi, alpha=0.3, color=color[i])
         # axs[0].errorbar(mid_bins, phi_mean, yerr=phi_std,
@@ -185,16 +165,6 @@ def HIMF_Counts_err(err_cat, labels, ALF, RMS, showSurveys=True,
     
     JonesHIMF = gf.HIMF_Jones2018(MHI=gf.MHI_grid)
     MaHIMF = gf.HIMF_Ma2024(MHI=gf.MHI_grid)
-
-    # Jones_Max = gf.schechter_fit_lg(gf.MHI_grid, 
-    #                                 phi_s=gf.phi_s+gf.del_phi_s, 
-    #                                 M_s=gf.M_s+gf.del_M_s, 
-    #                                 alpha=gf.alpha+gf.del_alpha)
-    
-    # Jones_Min = gf.schechter_fit_lg(gf.MHI_grid, 
-    #                             phi_s=gf.phi_s-gf.del_phi_s, 
-    #                             M_s=gf.M_s-gf.del_M_s, 
-    #                             alpha=gf.alpha-gf.del_alpha)
 
     axs[0].plot(np.log10(gf.MHI_grid), JonesHIMF, label='Jones+2018', color='gray', linewidth=1, linestyle='--') # HIMF
     axs[0].plot(np.log10(gf.MHI_grid), MaHIMF, label='Ma+2024', color='purple', linewidth=1, linestyle=':') # HIMF
@@ -225,6 +195,7 @@ def Counts_err(err_cat):
     Counts = phi_counts[1]
     Counts_mean = np.mean(Counts, axis=0)
     Counts_std = np.std(Counts, axis=0)
+
     plt.step(mid_bins, Counts_mean, color='black', where='post')
     plt.fill_between(mid_bins, Counts_mean-Counts_std, Counts_mean+Counts_std, alpha=0.3, color='black', step='post')
     plt.xlim(9.75,11)
@@ -232,6 +203,28 @@ def Counts_err(err_cat):
     plt.ylabel('Counts')
     plt.xlabel('log($M_{HI}h^{2}_{70}/M_{\odot}$)')
     plt.savefig('Plots/Highz_counts_Std.png')
+
+def z_Counts_err(err_cat):
+    z_counts = np.load(err_cat)
+    z_bins = np.linspace(0,0.8,100)
+    mid_bins = z_bins[:-1]
+    Counts_mean = np.mean(z_counts, axis=0)
+    Counts_std = np.std(z_counts, axis=0)
+
+    x = np.insert(mid_bins, 0, z_bins[0])
+    y = np.insert(Counts_mean, 0, 0)
+    y_low = np.insert(Counts_mean - Counts_std, 0, 0)
+    y_high = np.insert(Counts_mean + Counts_std, 0, 0)
+
+    plt.step(x, y, color='black', where='post')
+    plt.fill_between(x, y_low, y_high, alpha=0.3, color='black', step='post')
+    #plt.xlim(9.75,11)
+    #plt.title('0.3 < z < 0.7')
+    plt.ylabel('Counts')
+    plt.yscale('log')
+    plt.ylim(10**-1, 10**5.5)
+    plt.xlabel('Redshift')
+    plt.savefig('Plots/dndz_counts_z0p8.png')
 
 
 def add_zmask(ax):
@@ -382,7 +375,8 @@ def Show_Catalogs(catalogs):
 
 
 if __name__ == "__main__":
-    HIMF_Counts_err(err_cat=['phi_counts_checkpoint_5yr_z0p8_990.npy', 'phi_counts_checkpoint_1yr_z0p8_250.npy'], labels=['5 year', '1 year'], ALF=None, RMS=None, showSurveys=True, minCount=10)
+    z_Counts_err(err_cat='z_counts_checkpoint_5yr_z0p8_990.npy')
+    #HIMF_Counts_err(err_cat=['phi_counts_checkpoint_5yr_z0p8_990.npy', 'phi_counts_checkpoint_1yr_z0p8_250.npy'], labels=['5 year', '1 year'], ALF=None, RMS=None, showSurveys=True, minCount=10)
     #Counts_err(err_cat='phi_counts_z0p3to0p7_100.npy')
     #HIMF_Counts_err(err_cat='phi_counts_z0p3to0p7_100.npy', labels=None, ALF=None, RMS=None, showSurveys=False, minCount=10)
     #HIMF_Counts_err(err_cat='phi_counts_z0p1_100.npy', labels=None, ALF=None, RMS=None, showSurveys=True, minCount=10)
