@@ -113,4 +113,4 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
     
 if __name__ == "__main__":
 #    signal.signal(signal.SIGUSR1, handler)
-    MonteCarlo_HIMF(trials=1, zmax=1, zmin=0, dec1=20, dec2=80, obs_year=5)
+    MonteCarlo_HIMF(trials=1001, zmax=1, zmin=0, dec1=20, dec2=80, obs_year=5)
