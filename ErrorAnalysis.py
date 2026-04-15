@@ -64,16 +64,22 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
         # plt.figure()
         # plt.plot(np.log10(MHI_grid), np.log10(HIMF))
         #plt.plot(np.log10(MHI_grid), np.log10(HIMF_Jones2018(MHI=MHI_grid)), label='HIMF - drawn from, Jones2018')
-        catalog = Gen_Catalog(zmax=zmax, dec1=dec1, dec2=dec2, zmin=zmin, save=False, 
+        cat1 = Gen_Catalog(zmax=0.1, dec1=dec1, dec2=dec2, zmin=0, save=False, 
                               phi_s=phi_s, alpha=alpha, M_s=M_s, Fluxlim=True, obs_year=obs_year)
+        cat2 = Gen_Catalog(zmax=1, dec1=dec1, dec2=dec2, zmin=0.3, save=False, 
+                              phi_s=phi_s, alpha=alpha, M_s=M_s, Fluxlim=True, obs_year=obs_year)
+        print("cat 1 shape is ", cat1.shape)
+        print("cat 2 shape is ", cat2.shape)
+        catalog = np.concatenate((cat1, cat2), axis=1)
+        print("catalog shape is ", catalog.shape)
         MHI = catalog[0]
         W50 = catalog[3]
         D = catalog[6]
         z = catalog[8]
         W50_broad = W50_broadened(W50)
         dec = catalog[5]
-        print("max dec is ", np.max(dec))
-        print("min dec is ", np.min(dec))
+        #print("max dec is ", np.max(dec))
+        #print("min dec is ", np.min(dec))
         #RMS_mJy = RMS_fromDays(days=5*365/24, decl=np.deg2rad(20), z=z, nu=upchan_res*u.Hz).value
         #print("RMS values are", RMS_mJy)
         _, RMS_mJy, _ = build_survey(switch_int=7, obs_years=obs_year, z=z, start=dec1, end=dec2)
@@ -107,4 +113,4 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
     
 if __name__ == "__main__":
 #    signal.signal(signal.SIGUSR1, handler)
-    MonteCarlo_HIMF(trials=1001, zmax=1, zmin=0, dec1=20, dec2=80, obs_year=5)
+    MonteCarlo_HIMF(trials=1, zmax=1, zmin=0, dec1=20, dec2=80, obs_year=5)

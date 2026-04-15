@@ -105,7 +105,9 @@ def noise_cuts(catalog_fl, bandwidth, obs_length, nstrips, sigma=5, flname='', f
 def build_survey(obs_years, z, switch_int=7, beam_sep=2.5, start=20, end=80, beam_centers=None):
     if beam_centers is None:
         beam_centers = np.deg2rad(np.arange(start,end+beam_sep,beam_sep)) # radians
+    #print("beam_centers is ", np.rad2deg(beam_centers))
     nstrips = len(beam_centers)
+    #print("nstrips is ", nstrips)
     switch_time = switch_int*nstrips
     total_time = obs_years*365-switch_time
     obs_strip = total_time/nstrips
