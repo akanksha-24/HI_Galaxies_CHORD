@@ -10,6 +10,7 @@ import Plotting as plot
 import matplotlib.patches as patches
 import matplotlib.gridspec as gridspec
 import Galaxy_Functions as gf
+import matplotlib as mpl
 
 def Table3_Ma2024():
     # Columns: logM, HIPASS, HIPASS_err, ALFALFA, ALFALFA_err, FASHI_N, FASHI_N_err, FASHI_S, FASHI_S_err, Total, Total_err
@@ -41,6 +42,15 @@ def Table3_Ma2024():
 
 def HIMF_Counts(catalogs, labels, ALF, RMS, showSurveys=True, 
                 minCount=10, mockAlf=[False,False,False], solidang=[None, None, None]):
+    
+    mpl.rcParams.update({
+    'font.size': 14,
+    'axes.labelsize': 14,
+    'axes.titlesize': 14,
+    'xtick.labelsize': 14,
+    'ytick.labelsize': 14,
+    'legend.fontsize': 14
+    })
 
     fig, axs = plt.subplots(2, 1, figsize=(5.5, 5), dpi=300, sharex=True)
     bins = np.linspace(5, 11, 31)
@@ -93,14 +103,24 @@ def HIMF_Counts(catalogs, labels, ALF, RMS, showSurveys=True,
 
     plt.tight_layout()
     plt.subplots_adjust(hspace=0)
-    plt.savefig('Plots/Highz_z0p8_HIMF_Counts.png')
+    plt.savefig('Plots/WoutRFI_Highz_z0p8_HIMF_Counts.png')
     #plt.show()
 
 def HIMF_Counts_err(err_cat, labels, ALF, RMS, showSurveys=True, 
                 minCount=10, mockAlf=[False,False,False], solidang=[None, None, None]):
+    
+    mpl.rcParams.update({
+        'font.size': 14,         
+        'axes.labelsize': 14,     
+        'axes.titlesize': 14,
+        'xtick.labelsize': 14,
+        'ytick.labelsize': 14,
+    })
 
-    fig, axs = plt.subplots(2, 1, figsize=(5.5, 5), dpi=300, sharex=True)
-    bins = np.linspace(5, 11, 31)
+    fig, axs = plt.subplots(2, 1, figsize=(5.5, 7.3), dpi=300, sharex=True)#, gridspec_kw={'height_ratios': [1, 1, 0.4]})
+    plt.subplots_adjust(hspace=0)
+
+    bins = np.arange(4.9, 12.2, 0.2)
     mid_bins = 0.5*(bins[1:] + bins[:-1])
     #mid_bins = bins[:-1]
     print(mid_bins.shape)
@@ -123,30 +143,53 @@ def HIMF_Counts_err(err_cat, labels, ALF, RMS, showSurveys=True,
     Total_err = HI_surveys[:,10]
 
     for i in range(len(err_cat)):
-        phi_counts = np.load(err_cat[i])
-        phi = phi_counts[0]
-        print("phi shape", phi.shape)
-        Counts = phi_counts[1]
-        Counts_mean = np.mean(Counts, axis=0)
-        Counts_std = np.std(Counts, axis=0)
-        print("Counts shape", Counts.shape)
-        # phi = np.where(phi > 0, phi, np.nan)
-        phi_log = np.log10(phi)
+        if i < 2:
+            phi_counts = np.load(err_cat[i])
+            phi = phi_counts[0]
+            Counts = phi_counts[1]
+            Counts_mean = np.mean(Counts, axis=0)
+            Counts_std = np.std(Counts, axis=0)
+            total_Counts = np.sum(Counts_mean)
 
-        med_log = np.nanpercentile(phi_log, 50, axis=0)
-        lo_log  = np.nanpercentile(phi_log, 16, axis=0)
-        hi_log  = np.nanpercentile(phi_log, 84, axis=0)
-        phi_med = 10**med_log
-        phi_lo  = 10**lo_log
-        phi_hi  = 10**hi_log
-        phi_med[Counts_mean<minCount] = np.nan
+            phi_med = np.nanpercentile(phi, 50, axis=0)
+            phi_lo  = np.nanpercentile(phi, 16, axis=0)
+            phi_hi  = np.nanpercentile(phi, 84, axis=0)
+            phi_med[Counts_mean<minCount] = np.nan
 
-        axs[0].scatter(mid_bins, phi_med, color=color[i], label=labels[i], s=6)
-        axs[0].fill_between(mid_bins, phi_lo, phi_hi, alpha=0.3, color=color[i])
-        # axs[0].errorbar(mid_bins, phi_mean, yerr=phi_std,
-        #                 fmt='.', ecolor='gray', capsize=3, elinewidth=1, markeredgewidth=0.3, color=color[0], label='5 year survey')
-        axs[1].step(mid_bins, Counts_mean, color=color[i], label=labels[i], where='post')
-        axs[1].fill_between(mid_bins, Counts_mean-Counts_std, Counts_mean+Counts_std, alpha=0.3, color=color[i], step='post')
+            if i==0:
+                solidang = (gf.solid_angle(dec1=20, dec2=80, ra1=0, ra2=360)*u.sr).to_value(u.deg**2)//1000*1000
+            elif i==1:
+                solidang = (gf.solid_angle(dec1=20, dec2=50, ra1=0, ra2=360)*u.sr).to_value(u.deg**2)//100*100
+
+            axs[0].scatter(mid_bins, phi_med, color=color[i], label=labels[i] + ' CHORD', s=7, marker=markers[i])
+            if i==0:
+                axs[0].fill_between(mid_bins[1:], phi_lo[1:], phi_hi[1:], alpha=0.3, color='gray')
+            # axs[0].errorbar(mid_bins, phi_mean, yerr=phi_std,
+            #                 fmt='.', ecolor='gray', capsize=3, elinewidth=1, markeredgewidth=0.3, color=color[0], label='5 year survey')
+            mantissa, exponent = f"{total_Counts:.0e}".split("e")
+            exponent = int(exponent)
+            axs[1].step(mid_bins, Counts_mean, color=color[i], label=labels[i]+f', {solidang:.0f} deg$^{{2}}$ \n\t Total: {mantissa}${{\\times}}$10$^{exponent}$', where='post')
+            axs[1].fill_between(mid_bins, Counts_mean-Counts_std, Counts_mean+Counts_std, alpha=0.3, color=color[i], step='post')
+
+            relative_uncertainty = Counts_std / Counts_mean
+            relative_uncertainty[Counts_mean < 10] = np.nan # mask
+            poisson = np.sqrt(Counts_mean) / Counts_mean
+            #mask = (Counts_mean < 10) | (Counts_mean > 100)
+            poisson[Counts_mean < 10] = np.nan
+            # axs[2].scatter(mid_bins, relative_uncertainty, color=color[i], s=5)
+            # axs[2].bar(mid_bins, poisson, color=color[i], linestyle='--', alpha=0.4)
+            # if i==0:
+            #     axs[2].scatter(9,0,s=5, color='black', label='$\sigma/<N>$')
+            #     axs[2].bar(9,0, color='black', label='Poisson', alpha=0.4)
+            # axs[2].set_ylim(0,1.5)
+
+        else:
+            #plot.recover_HIMF(catalog_fl=err_cat[i], ax=axs[0], label=labels[i], count_min=minCount, mockAlf=False,
+            #                            color=color[i], ALF=True, RMS=None, bins=bins, marker=markers[i], fromD=False)
+            alf_counts = plot.MHI_Counts(catalog_fl=err_cat[i], ax=axs[1], label='', color=color[i], bins=bins)
+            mantissa, exponent = f"{alf_counts:.0e}".split("e")
+            exponent = int(exponent)
+            axs[1].plot(5,0,color=color[i], label=f'ALFALFA, 7000 deg$^{{2}}$ \n\t Total: {mantissa}${{\\times}}$10$^{exponent}$')
 
     axs[1].set_yscale('log')
     axs[0].set_yscale('log')
@@ -172,66 +215,72 @@ def HIMF_Counts_err(err_cat, labels, ALF, RMS, showSurveys=True,
     axs[0].set_ylabel('$\phi(M_{HI})h_{70}^{-3}$[Mpc$^{-3}$ dex$^{-1}$]')
     axs[1].set_ylabel('Counts')
     axs[1].set_xlabel('log($M_{HI}h^{2}_{70}/M_{\odot}$)')
+    axs[0].set_xlim(4.8,11.6)
+    axs[0].set_ylim(10**-8.5, 1)
+    axs[0].set_xticks([5,6,7,8,9,10,11])
     axs[0].grid(True, linewidth=0.3)
     axs[1].grid(True, linewidth=0.3)
-
+    # axs[2].grid(True, linewidth=0.3)
+    #axs[2].set_ylabel('Relative uncertainty')
 
     handles, labels = axs[0].get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
-    axs[0].legend(by_label.values(), by_label.keys(), loc='lower left', fontsize=8)
-    axs[1].legend(loc='upper left', fontsize=8)
+    axs[0].legend(by_label.values(), by_label.keys(), loc='lower left', fontsize=9)
+    axs[1].legend(loc='upper left', fontsize=8.7)
+    axs[1].set_ylim(0.5,10**6.8)
+    axs[1].set_yticks([1,10,100,10**3,10**4,10**5,10**6])
+    # axs[2].legend(fontsize=8.7, bbox_to_anchor=[0.62,1], loc='upper center')
+    # axs[2].set_ylabel('Relative \n Uncertainty')
     #axs[0].tick_params(labelbottom=False) 
-    axs[0].set_title('D < 40 Mpc')
-
-    plt.tight_layout()
-    plt.subplots_adjust(hspace=0)
-    plt.savefig('Plots/PhiCounts_error_z0p8.png')
+    #axs[0].set_title('D < 40 Mpc')
+    #plt.tight_layout()
+    plt.savefig('Plots/PhiCounts_error_z1.pdf', bbox_inches='tight')
     #plt.show()
 
 def Counts_err(err_cat):
     phi_counts = np.load(err_cat)
-    bins = np.linspace(5, 11, 31)
+    bins = np.arange(4.9, 12.2, 0.2)
+    print(bins.shape)
+    print(phi_counts.shape)
     mid_bins = bins[:-1]
     Counts = phi_counts[1]
     Counts_mean = np.mean(Counts, axis=0)
     Counts_std = np.std(Counts, axis=0)
+    Counts_poisson = np.sqrt(Counts_mean)
+    print(Counts_mean)
+    print(Counts_std)
 
-    plt.step(mid_bins, Counts_mean, color='black', where='post')
-    plt.fill_between(mid_bins, Counts_mean-Counts_std, Counts_mean+Counts_std, alpha=0.3, color='black', step='post')
-    plt.xlim(9.75,11)
-    plt.title('0.3 < z < 0.7')
-    plt.ylabel('Counts')
-    plt.xlabel('log($M_{HI}h^{2}_{70}/M_{\odot}$)')
-    plt.savefig('Plots/Highz_counts_Std.png')
-
-def z_Counts_err(err_cat):
-    z_counts = np.load(err_cat)
-    z_bins = np.linspace(0,0.8,100)
-    mid_bins = z_bins[:-1]
-    Counts_mean = np.mean(z_counts, axis=0)
-    Counts_std = np.std(z_counts, axis=0)
-
-    x = np.insert(mid_bins, 0, z_bins[0])
-    y = np.insert(Counts_mean, 0, 0)
-    y_low = np.insert(Counts_mean - Counts_std, 0, 0)
-    y_high = np.insert(Counts_mean + Counts_std, 0, 0)
-
-    plt.step(x, y, color='black', where='post')
-    plt.fill_between(x, y_low, y_high, alpha=0.3, color='black', step='post')
+    #plt.step(mid_bins, Counts_mean, color='black', where='post')
+    #plt.fill_between(mid_bins, Counts_mean-Counts_std, Counts_mean+Counts_std, alpha=0.3, color='black', step='post')
+    frac = Counts_std / Counts_mean
+    frac_poisson = Counts_poisson / Counts_mean
+    mask = Counts_mean > 10
+    #plt.plot(mid_bins[mask], frac[mask])
+    #plt.plot(mid_bins[mask], frac_poisson[mask])
+    plt.plot(Counts_std / Counts_poisson)
+    #plt.plot()
     #plt.xlim(9.75,11)
     #plt.title('0.3 < z < 0.7')
-    plt.ylabel('Counts')
-    plt.yscale('log')
-    plt.ylim(10**-1, 10**5.5)
-    plt.xlabel('Redshift')
-    plt.savefig('Plots/dndz_counts_z0p8.png')
+    #plt.ylabel('Counts')
+    #plt.xlabel('log($M_{\rm{HI}h^{2}_{70}/M_{\odot}$)')
+    plt.show()
+    #plt.savefig('Plots/Highz_counts_Std.png')
+
 
 
 def add_zmask(ax):
     x0, x1 = 0.1, 0.3   
     y0, y1 = ax.get_ylim()    
-    rect = patches.Rectangle((x0, y0), x1 - x0, y1 - y0, linewidth=1, edgecolor='red', facecolor='red', alpha=0.3)
+    rect = patches.Rectangle((x0, y0), x1 - x0, y1 - y0, linewidth=1, edgecolor='red', facecolor='red', alpha=0.25)
     ax.add_patch(rect)
+
+    legend_patch = patches.Patch(
+    facecolor='red',
+    edgecolor='red',
+    alpha=0.25,
+    label='RFI'
+    )
+    return legend_patch
 
 
 def MHI_redshift(catalogs, labels, figname='', mask=False):
@@ -273,6 +322,51 @@ def dndz_surveys(catalogs, labels, mask=False, figname='', Usedz=True, log=False
         axs.set_ylabel('Counts')
     plt.tight_layout()
     plt.savefig(figname)
+
+def z_Counts_err(err_cats, labels, mask=True, log=True, zmax=1):
+    mpl.rcParams.update({
+        'font.size': 13,         
+        'axes.labelsize': 13,     
+        'axes.titlesize': 13,
+        'xtick.labelsize': 13,
+        'ytick.labelsize': 13,
+    })
+    fig, axs = plt.subplots(1, 1, figsize=(5, 4), dpi=300)
+    color = cm.get_cmap('Dark2', 7).colors
+    z_step = 0.008
+    z_bins = np.arange(-1*z_step/2, zmax+z_step, z_step)
+    mask = np.where(z_bins <= 0.77)
+    z_bins = z_bins[mask]
+    #mid_bins = gf.mid_bin(z_bins)
+    for i in np.arange(len(err_cats)):
+        err_cat = err_cats[i]
+        if i < 2:
+            z_counts = np.load(err_cat)
+            Counts_mean = np.mean(z_counts[:,mask], axis=0)[0]
+            Counts_std = np.std(z_counts[:,mask], axis=0)[0]
+
+            # x = np.insert(mid_bins, 0, z_bins[0])
+            # y = np.insert(Counts_mean, 0, 0)
+            # y_low = np.insert(Counts_mean - Counts_std, 0, 0)
+            # y_high = np.insert(Counts_mean + Counts_std, 0, 0)
+
+            axs.step(z_bins, Counts_mean, where='post', label=labels[i], color=color[i])
+            axs.fill_between(z_bins, Counts_mean-Counts_std, Counts_mean+Counts_std, alpha=0.3, color=color[i], step='post')
+        else:
+            plot.dndz_catalog(err_cats[i], ax=axs, label='', color=color[i], Usedz=False, bins=50)
+            axs.plot(0, 0, color=color[i], label='ALFALFA')
+    axs.grid(True, linewidth=0.3)
+    axs.set_ylabel('Counts')
+    axs.set_xlabel('Redshift')
+    axs.set_ylim(0.5, 10**5.5)
+    if mask:
+        legend_patch = add_zmask(ax=axs)
+    if log:
+        axs.set_yscale('log')
+    handles, labels = axs.get_legend_handles_labels()
+    axs.legend(handles + [legend_patch], labels + ['RFI'], fontsize=11)
+    plt.tight_layout()
+    plt.savefig('Plots/dndz_counts_z1.pdf', bbox_inches='tight')
 
 def Show_Catalogs_polar(catalogs):
 
@@ -375,8 +469,15 @@ def Show_Catalogs(catalogs):
 
 
 if __name__ == "__main__":
-    z_Counts_err(err_cat='z_counts_checkpoint_5yr_z0p8_990.npy')
-    #HIMF_Counts_err(err_cat=['phi_counts_checkpoint_5yr_z0p8_990.npy', 'phi_counts_checkpoint_1yr_z0p8_250.npy'], labels=['5 year', '1 year'], ALF=None, RMS=None, showSurveys=True, minCount=10)
+    # Counts_err(err_cat='phi_counts_checkpoint_5yr_z1_1000.npy')
+    z_Counts_err(err_cats=['z_counts_checkpoint_5yr_z1_1000.npy',
+                          'z_counts_checkpoint_1yr_z1_1000.npy',
+                          'catalogs_output/ALFALFA_a100_90complete.npy'],
+                          labels=['5 year CHORD', '1 year CHORD', 'ALFALFA'])
+    # HIMF_Counts_err(err_cat=['phi_counts_checkpoint_5yr_z1_1000.npy',    
+    #                          'phi_counts_checkpoint_1yr_z1_1000.npy',
+    #                          'catalogs_output/ALFALFA_a100_90complete.npy'], 
+    #                 labels=['5 year', '1 year', 'ALFALFA'], ALF=None, RMS=None, showSurveys=True, minCount=10)
     #Counts_err(err_cat='phi_counts_z0p3to0p7_100.npy')
     #HIMF_Counts_err(err_cat='phi_counts_z0p3to0p7_100.npy', labels=None, ALF=None, RMS=None, showSurveys=False, minCount=10)
     #HIMF_Counts_err(err_cat='phi_counts_z0p1_100.npy', labels=None, ALF=None, RMS=None, showSurveys=True, minCount=10)

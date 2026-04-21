@@ -14,6 +14,7 @@ from math import erf
 import Galaxy_Functions as gf
 from Gaussian_Estimate import *
 from CHORD_Sensitivity import *
+from matplotlib.backends.backend_pdf import PdfPages
 
 # for parallelization 
 comm = MPI.COMM_WORLD
@@ -22,7 +23,7 @@ size_mpi = comm.Get_size()
 
 upchan_res = gf.width_vel2freq(del_Vrest=5) # for 5 km/s wide channels
 # need to fix
-RMS_mJy = time2RMS(days=5*365/24, decl=np.deg2rad(20), nu=upchan_res*u.Hz).value
+#RMS_mJy = time2RMS(days=5*365/24, decl=np.deg2rad(20), nu=upchan_res*u.Hz).value
 
 def Busy_general(x, a, b1, b2, xe, xp, c, w, n):
     ''' This is the functional definition for a General Busy Function:
@@ -157,6 +158,7 @@ def assign_freqUnits(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5):
     #print("S peak in Jy from freq", Sf_int/gf.width_vel2freq(W50broad, z=z)) 
 
     freq_final = freq_axis + freq_obs
+    Speak = S_int/W50broad
     # plt.figure()
     # #plt.plot(f_highres, S_norm)
     # #plt.plot(freq_axis, S_resamp)
@@ -164,7 +166,7 @@ def assign_freqUnits(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5):
     # plt.title(f'log(MHI)={np.log10(MHI_desired):.1f}, Speak={S_int/W50broad:.3f} Jy')
     # plt.show()
 
-    return freq_final, Sf_convolve
+    return freq_final, Sf_convolve, Speak
 
 
 # Gaussian Function
@@ -192,14 +194,21 @@ def convolve_spectrum(S, V, sigma=10):
 #     G = gaussian_kernel(V, FWHM)
 #     return fftconvolve(B, G[None, :], mode='same', axes=1)
 
-def SNRint(f, Sf, z, W50, MHI, D_C, obs_yr=5):
+def SNRint(f, Sf, z, W50, MHI, D_C, RMS_mJy, obs_yr=5, prevSNR=None):
     W50_broad = W50_broadened(W50)
     Wf = gf.width_vel2freq(del_Vrest=W50_broadened(W50_broad))
 
     chan_mask = Sf > RMS_mJy*1e-3
     S_int = integrate_profile(f[chan_mask], Sf[chan_mask]) # in Jy*MHz
     N_chans = np.sum(Sf > RMS_mJy*1e-3)
-    SNRint = S_int / (RMS_mJy*upchan_res*1e-9*np.sqrt(N_chans))
+    if N_chans!=0:
+        SNRint = S_int / (RMS_mJy*upchan_res*1e-9*np.sqrt(N_chans))
+        print("Spectra SNR", SNRint)
+        print("previous SNR", prevSNR)
+    else:
+        SNRint=0
+        if (prevSNR is None)==0:
+            print("previous 0 SNR was ", prevSNR)
     return SNRint
 
     #SNRint2 = gf.SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=183000)#=upchan_res)
@@ -209,7 +218,10 @@ def SNRint(f, Sf, z, W50, MHI, D_C, obs_yr=5):
     #SNR_MJ = MHI*np.sqrt(f_smo)/(RMS_mJy*W50_broad*235.6*D_C**2)
     #print("integrated singal to noise by MJ is ", SNR_MJ)
 
-def Generate_Spectra(size, MHI, W50, D_C, z, a=1, w=1, b1=None, b2=None, c=None, xe=None, xp=None, n=None, thermal_broaden=True):
+
+
+def Generate_Spectra(size, MHI, W50, D_C, z, RMS, a=1, w=1, b1=None, b2=None, c=None, xe=None, xp=None, n=None, 
+                     thermal_broaden=True, fname='Plots/spectra_check_z0p1.pdf', plotSpectra=False, prevSNR=None):
     ''' Main function which generates an HI Spectrum. 
     The shape of the busy function (specified by a, b1, b2, c) is randomly generated (unless otherwise specified). 
     The area under the profile is set by MHI. 
@@ -227,31 +239,36 @@ def Generate_Spectra(size, MHI, W50, D_C, z, a=1, w=1, b1=None, b2=None, c=None,
     if b1==None: b1 = np.random.uniform(1, 5, size=size)
     if b2==None: b2 = np.random.uniform(1, 5, size=size)
     if c==None: c = np.random.uniform(0, 4, size=size)
-    if xe==None: xe = 0 #np.random.uniform(-0.1, 0.1, size=size)
-    if xp==None: xp =  0 #np.random.uniform(-0.1, 0.1, size=size)
+    if xe==None: xe = np.zeros(size) #np.random.uniform(-0.1, 0.1, size=size)
+    if xp==None: xp =  np.zeros(size) #np.random.uniform(-0.1, 0.1, size=size)
     if n==None: n = np.random.uniform(1, 4, size=size) # n=odd number results in negative values, n=4 is too broad
 
     SNR_int = []
+    with PdfPages(fname) as pdf_:
+        for i in np.arange(size):
+            #print(i)
+            B = Busy_general(x, a, b1[i], b2[i], xe[i], xp[i], c[i], w, n[i])
+            V, S = assign_units(x, B, W50[i], D_L[i], z[i], MHI_desired=MHI[i])
+            f, Sf, Speak = assign_freqUnits(x, B, W50[i], D_L[i], z[i], MHI_desired=MHI[i])
+            f_V = gf.convert_f(V, z[i])
+            final_M = get_MHI_freq(f, Sf, z[i])
+            #print("Final  M is ", final_M)
+            SNR = SNRint(f, Sf, z[i], W50[i], MHI[i], D_C=D_C[i], RMS_mJy=RMS[i], prevSNR=prevSNR[i])
+            SNR_int.append(SNR)
+            if plotSpectra:
+                fig = plt.figure()
+                #plt.plot(f_V, S)
+                plt.plot(f, Sf)
+                plt.xlabel('Frequency (MHz)')
+                plt.ylabel('Flux Density (Jy)')
+                plt.title(f'log(MHI)={np.log10(MHI[i]):.1f}, D={D_C[i]:.0f} Mpc, z={z[i]:.2f}, SNR={SNR:.0f}, Speak={Speak:.2f} Jy')
+                pdf_.savefig(fig)
+                plt.close(fig)
 
-    for i in np.arange(size):
-        #print(i)
-        B = Busy_general(x, a, b1[i], b2[i], xe[i], xp[i], c[i], w, n[i])
-        V, S = assign_units(x, B, W50[i], D_L[i], z[i], MHI_desired=MHI[i])
-        f, Sf = assign_freqUnits(x, B, W50[i], D_L[i], z[i], MHI_desired=MHI[i])
-        f_V = gf.convert_f(V, z[i])
-        final_M = get_MHI_freq(f, Sf, z[i])
-        #print("Final  M is ", final_M)
-        SNR_int.append(SNRint(f, Sf, z[i], W50[i], MHI[i], D_C=D_C[i]))
-
-        # plt.figure()
-        # plt.plot(f_V, S)
-        # plt.plot(f, Sf)
-        # plt.show()
-
-    end = time.time()
+        end = time.time()
     #print(f"Runtime: {end - start:.3f} seconds")
-    #return SNR_int
-    return final_M, V, S, SNR_int#, freq
+    return SNR_int
+    #return final_M, V, S, SNR_int#, freq
 
 def Save_Spectra(catalog_fl, size=None):
     catalog = np.load(catalog_fl)

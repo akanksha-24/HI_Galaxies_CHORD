@@ -7,6 +7,7 @@ from Gaussian_Estimate import *
 from Plotting import *
 import sys
 import signal
+from Generate_Spectra import *
 
 # exit_now = False
 
@@ -32,7 +33,23 @@ def Vmax_corr(MHI, z, RMS_mJy, W50_broad, chan_width, sigma, solidang):
     Vmax = VolumeFromDist(Dmax_comov, solidang=solidang, Dmin=Dmin)
     return Vmax
 
-def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, obs_year=5):
+def Spectra_SNRint(catalog, RMS, prevSNR=None, plotSpectra=True):
+    #print("Detections shape is ", np.transpose(catalog).shape)
+    # if plotSpectra:
+    #     catalog_T = np.transpose(catalog)
+    #     np.random.shuffle(catalog_T)
+    #     catalog = np.transpose(catalog_T)
+    #     print("final catalog shape is ", catalog.shape)
+    MHI = catalog[0]
+    W50 = catalog[3]
+    D = catalog[6]
+    z = catalog[8]
+    dec = catalog[5]
+    SNR_int = Generate_Spectra(size=100, MHI=MHI, W50=W50, D_C=D, z=z, RMS=RMS, prevSNR=prevSNR, plotSpectra=plotSpectra)
+    #SNR_int = Generate_Spectra(size=catalog.shape[1], MHI=MHI, W50=W50, D_C=D, z=z)
+    return SNR_int
+
+def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, obs_year=5, Spectra=False):
     upchan_res = width_vel2freq(del_Vrest=5)
     #RMS_mJy = time2RMS(days=5*365/24, decl=np.deg2rad(20), nu=upchan_res*u.Hz).value
     solidang = solid_angle(dec1=dec1, dec2=dec2, ra1=0, ra2=360)
@@ -64,13 +81,13 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
         # plt.figure()
         # plt.plot(np.log10(MHI_grid), np.log10(HIMF))
         #plt.plot(np.log10(MHI_grid), np.log10(HIMF_Jones2018(MHI=MHI_grid)), label='HIMF - drawn from, Jones2018')
-        cat1 = Gen_Catalog(zmax=0.1, dec1=dec1, dec2=dec2, zmin=0, save=False, 
+        catalog = Gen_Catalog(zmax=zmax, dec1=dec1, dec2=dec2, zmin=zmin, save=False, 
                               phi_s=phi_s, alpha=alpha, M_s=M_s, Fluxlim=True, obs_year=obs_year)
-        cat2 = Gen_Catalog(zmax=1, dec1=dec1, dec2=dec2, zmin=0.3, save=False, 
-                              phi_s=phi_s, alpha=alpha, M_s=M_s, Fluxlim=True, obs_year=obs_year)
-        print("cat 1 shape is ", cat1.shape)
-        print("cat 2 shape is ", cat2.shape)
-        catalog = np.concatenate((cat1, cat2), axis=1)
+        # cat2 = Gen_Catalog(zmax=1, dec1=dec1, dec2=dec2, zmin=0.3, save=False, 
+        #                       phi_s=phi_s, alpha=alpha, M_s=M_s, Fluxlim=True, obs_year=obs_year)
+        # print("cat 1 shape is ", cat1.shape)
+        # print("cat 2 shape is ", cat2.shape)
+        # catalog = np.concatenate((cat1, cat2), axis=1)
         print("catalog shape is ", catalog.shape)
         MHI = catalog[0]
         W50 = catalog[3]
@@ -84,8 +101,10 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
         #print("RMS values are", RMS_mJy)
         _, RMS_mJy, _ = build_survey(switch_int=7, obs_years=obs_year, z=z, start=dec1, end=dec2)
         SNR = SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=upchan_res)
-        mask = SNR > 6
+        mask1 = SNR > 6
         #np.save('detected_test.npy', catalog[:,mask])
+        SNR_spectra = Spectra_SNRint(catalog=catalog[:, mask1], RMS=RMS_mJy[mask1], prevSNR=SNR[mask1])
+        mask = SNR_spectra > 6
         Vmax = Vmax_corr(MHI[mask], z[mask], RMS_mJy[mask], W50_broad[mask], chan_width=upchan_res, sigma=sigma, solidang=solidang)
         counts_Vcorr, _ = np.histogram(np.log10(MHI[mask]), bins=bins, weights=1/Vmax)
         phi[i] = counts_Vcorr/binwidth
@@ -113,4 +132,4 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
     
 if __name__ == "__main__":
 #    signal.signal(signal.SIGUSR1, handler)
-    MonteCarlo_HIMF(trials=1001, zmax=1, zmin=0, dec1=20, dec2=50, obs_year=1)
+    MonteCarlo_HIMF(trials=1, zmax=1, zmin=0, dec1=20, dec2=80, obs_year=5, Spectra=True)

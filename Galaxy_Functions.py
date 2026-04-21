@@ -18,7 +18,7 @@ del_alpha = 0.1
 del_M_s=10**9.94*np.log(10)*0.051
 del_phi_s=np.sqrt(0.2**2 + 0.8**2)*1e-3
 
-MHI_grid = np.logspace(5,11,100000)
+MHI_grid = np.logspace(5,12,100000)
 
 #Constant for MHI calculation:
 C21 = (2.356 * 10**5) * u.solMass * u.Mpc**-2 * (u.Jy*u.km/u.s)**-1

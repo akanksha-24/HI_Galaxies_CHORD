@@ -12,6 +12,7 @@ from matplotlib.lines import Line2D
 import Galaxy_Functions as gf
 from Gaussian_Estimate import *
 from CHORD_Sensitivity import *
+import matplotlib as mpl
 
 upchan_res = gf.width_vel2freq(del_Vrest=5) # u.Hz
 
@@ -127,6 +128,15 @@ def dec_solidang_byMHI(catalog_lss, catalog_volim, normalizeDec=True, PlotRA=Fal
 
     lgMHI_bins = np.linspace(7,11,5)
 
+    mpl.rcParams.update({
+    'font.size': 13,
+    'axes.labelsize': 13,
+    'axes.titlesize': 13,
+    'xtick.labelsize': 13,
+    'ytick.labelsize': 13,
+    'legend.fontsize': 9.5
+    })
+
     fig, ax = plt.subplots(2, 1, figsize=(5, 8), dpi=300)
     # cmap = cm.get_cmap('Blues_r', len(lgMHI_bins))
     # colors = cmap(np.linspace(0, 1, len(lgMHI_bins)))
@@ -188,7 +198,7 @@ def dec_solidang_byMHI(catalog_lss, catalog_volim, normalizeDec=True, PlotRA=Fal
     ax[1].grid(True, linewidth=0.4)
     ax[0].grid(True, linewidth=0.4)
     plt.tight_layout()
-    plt.savefig('Plots/LSS_RA_Dec.png')
+    plt.savefig('Plots/LSS_RA_Dec.pdf', bbox_inches='tight')
 
 def MHI_VHI_polynomial(MHI=np.logspace(5,11,100000)):
     VHI = gf.VHI_polyFit(MHI)
@@ -222,7 +232,7 @@ def recover_HIMF(catalog_fl, Vollim=False, mask_fl='', RMS=0.1, sigma=6, nbins=3
 
     else:
         if ALF:
-            Vmax, MHI, W50 = gf.Vmax_ALF(alf_fl=catalog_fl, solidang=solidang)
+            Vmax, MHI, W50 = gf.Vmax_ALF(alf_fl=catalog_fl)#, solidang=solidang)
         elif mockAlf:
             Vmax, MHI, W50 = gf.Vmax_correct(catalog_file=catalog_fl, sigma=sigma, RMS=RMS, fromD=False, mockAlf=mockAlf, solidang=solidang)
         else:
@@ -320,10 +330,11 @@ def MHI_Counts(catalog_fl, n_bins=30, label='', color='', hatch='', bins=None, a
     else:
         counts = len(MHI)
         if bins is None:
-            ax.hist(np.log10(MHI), bins=n_bins, histtype='step', label=label+f"{counts}", color=color, hatch=hatch, linewidth=1.5)
+            ax.hist(np.log10(MHI), bins=n_bins, histtype='step', color=color, hatch=hatch, linewidth=1.5) #label=label+f"{counts}")
         else:
-            ax.hist(np.log10(MHI), bins=bins, histtype='step', label=label+f"{counts}", color=color, hatch=hatch, linewidth=1.5)
+            ax.hist(np.log10(MHI), bins=bins, histtype='step', color=color, hatch=hatch, linewidth=1.5) #label=label+f"{counts}",
         ax.set_yscale('log')
+        return counts
 
 def dndz(catalog=None, N=None, z=None, flname='', compareHans=''):
     if catalog==None:
@@ -572,8 +583,16 @@ def W50z_Plane(RMS=0.1, sigma=6, nearby=False):
     plt.show()
 
 def W50z_Plane_subplots(RMS=0.1, sigma=6):
-    fig, ax = plt.subplots(1, 2, figsize=[12,4.5], dpi=300)
-    plt.subplots_adjust(wspace=0.15)
+    mpl.rcParams.update({
+    'font.size': 14,
+    'axes.labelsize': 14,
+    'axes.titlesize': 14,
+    'xtick.labelsize': 14,
+    'ytick.labelsize': 14,
+    'legend.fontsize': 14
+    })
+    fig, ax = plt.subplots(1, 2, figsize=[13,4.5], dpi=300)
+    plt.subplots_adjust(wspace=0.17)
     lg_W50 = np.linspace(1, 2.7, 1000)
     z = np.linspace(0,1,10000)
     #RMS_5yr = RMS_fromDays(days=5*365/24, decl=np.deg2rad(20), z=z, nu=upchan_res*u.Hz).value
@@ -591,7 +610,7 @@ def W50z_Plane_subplots(RMS=0.1, sigma=6):
             [9,10,10.5,11]]
 
     manual_locations5 = [[(0.0, 1.3), (20, 1.35), (40, 1.4), (80, 1.5), (120, 2.0)],
-                    [(0.05, 1.2), (0.3, 1.3), (0.48, 1.4), (0.75, 1.5)]]
+                    [(0.05, 1.3), (0.3, 1.4), (0.48, 1.45), (0.75, 1.5)]]
 
     levels_1yr = [[6,7,7.5,8],
             [10,10.5,11,11.5]]
@@ -604,6 +623,7 @@ def W50z_Plane_subplots(RMS=0.1, sigma=6):
     ax[0].set_xlabel('Distance (Mpc)')
     ax[0].set_xlim(0,128)
     ax[0].set_ylim(1.2,2.2)
+    ax[1].set_ylim(1.2,2.7)
 
     im = ax[1].imshow(np.log10(MHI_2d_5year), extent=[z_2d.min(), z_2d.max(), lg_W50.min(), lg_W50.max()], origin='lower', aspect='auto') 
     ax[1].set_xlim(0.03,1)
@@ -627,32 +647,30 @@ def W50z_Plane_subplots(RMS=0.1, sigma=6):
     ax[1].clabel(CS, inline=True, inline_spacing=0, fontsize=10, fmt=lambda v: f" {v:.1f} ", manual=manual_locations1[1])
 
     ax[0].set_ylabel('log(W50/km s$^{-1}$)')
+    ax[1].set_yticks([1.2,1.4,1.6,1.8,2,2.2,2.4,2.6])
     
     cbar = fig.colorbar(im, ax=ax, pad=0.01)
     cbar.set_label(r"log($M_{\mathrm{HI}}/M_\odot$)")
     cbar.set_ticks([4,6,8,10])
 
     legend_elements = [
-    Line2D([0], [0], color='black', lw=1, linestyle='--',
-           label='5-year survey'),
-    Line2D([0], [0], color='white', lw=1, linestyle='-.',
-           label='1-year survey'),
-    ]
+    Line2D([0], [0], color='black', lw=1, linestyle='--', label='5 year'),#label=f'5-year survey, {RMS_5yr[0]:.1f} mJy'),
+    Line2D([0], [0], color='white', lw=1, linestyle='-.', label='1 year')]#label=f'1-year survey, {RMS_1yr[0]:.1f} mJy')]
 
     leg = ax[1].legend(
         handles=legend_elements,
         ncol=1,
         frameon=True,
-        bbox_to_anchor=(0.78, 0.92),
+        bbox_to_anchor=(0.82, 0.90),
         loc='center',
     )
 
     leg.get_frame().set_facecolor('gray')
-    leg.get_frame().set_alpha(0.3)
+    leg.get_frame().set_alpha(0.4)
 
 
     #plt.tight_layout()
-    plt.savefig("Plots/DistanceDetect_withScanTime.pdf")
+    plt.savefig("Plots/DistanceDetect_withScanTime.pdf", bbox_inches='tight')
 
 def W50z_Plane_subplots_zD(RMS=0.1, sigma=6):
     RMS_1year = 0.18
@@ -740,7 +758,7 @@ def W50z_Plane_subplots_zD(RMS=0.1, sigma=6):
         handles=legend_elements,
         ncol=1,
         frameon=True,
-        bbox_to_anchor=(0.78, 0.92),
+        bbox_to_anchor=(0.72, 0.92),
         loc='center',
     )
 
@@ -898,7 +916,7 @@ def survey_scantime():
 
 if __name__ == "__main__":
     #survey_scantime()
-    W50z_Plane_subplots()
+    #W50z_Plane_subplots()
     #check_Spectra()
     #W50z_Plane(nearby=True)
     #LowM_Distance(catalog='catalogs_output/Detected_RMS0p08_VolLim_20to80deg_zmax0p8_full.npy')
@@ -908,8 +926,8 @@ if __name__ == "__main__":
     #                          labels=['Uniformly Distibuted', 'Large-scale Strcture'], PlotRA=True)
     # dec_solidang_byMHI(catalogs=['DetectionsALFALFA_MockSim_changeVelocity_20to80deg_Dmax200.npy'],
     #                         labels=['Uniformly Distibuted', 'Large-scale Strcture'], normalizeDec=True)
-    #dec_solidang_byMHI(catalog_lss='catalogs_output/MockAlf_D200_Dec20to80_ChangeVelocity.npy', 
-    #                   catalog_volim='DetectionsALFALFA_20to80deg_Dmax200.npy')
+    dec_solidang_byMHI(catalog_lss='catalogs_output/MockAlf_D200_Dec20to80_ChangeVelocity.npy', 
+                      catalog_volim='DetectionsALFALFA_20to80deg_Dmax200.npy')
     # dec_solidang_byMHI(catalogs=['catalogs_output/MockAlf_D200_Dec20to80_ChangeVelocity.npy'],
     #                 labels=['Uniformly Distibuted', 'Large-scale Strcture'], normalizeDec=True)
 

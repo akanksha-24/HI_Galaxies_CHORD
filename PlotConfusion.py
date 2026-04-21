@@ -2,6 +2,7 @@ from MJ_confusion_functions import *
 import numpy as np
 from matplotlib.pyplot import cm
 from matplotlib.lines import Line2D
+import matplotlib as mpl
 
 z_step = 1000./300000.
 zstart=z_step/2
@@ -34,21 +35,36 @@ def plot_fracz_combined():
     frac_Msum = np.load('../HI_stack_confusion/code/Fraction_MHI.npy')
     fracM_Mdet = np.load('fractionBlends_Detection.npy')
     fracM_M0p1 = np.load('fractionBlends_10pDetection.npy')
+    #z_step_err = 500./300000.
+    #z_list_err = numpy.arange(z_step_err/2,1,z_step_err)
+    Sint_runs = np.load('Sint_1000runs_allz.npy')[0:360,:]
+    error = np.std(Sint_runs, axis=1)
+
+    mpl.rcParams.update({
+    'font.size': 14,
+    'axes.labelsize': 14,
+    'axes.titlesize': 14,
+    'xtick.labelsize': 14,
+    'ytick.labelsize': 14,
+    'legend.fontsize': 10
+    })
     
     fig, ax = plt.subplots(1,2, figsize=[10,4], dpi=300)
-    ax[0].plot(z_list, fracz_M0p1, color='Green', linewidth=2.5, linestyle='-', label='$\geq 0.1M_{\mathrm{det}}$')
-    ax[0].plot(z_list, fracz_Mdet, color='Black', linewidth=2.5, linestyle='--', label='Other Det')
-    ax2 = ax[0].twinx()
-    ax2.plot(frac_Msum[0], frac_Msum[1], color='Orange', linestyle='-.', linewidth=2.5, label='$M_{\mathrm{stack}} / M_{\mathrm{lim}}$')
-    ax[0].legend(bbox_to_anchor=[0.1,1.0], loc='upper left')
-    ax2.legend(loc='upper right')
+    #ax2 = ax[0].twinx()
+    ax[0].fill_between(frac_Msum[0], frac_Msum[1]-error, frac_Msum[1]+error, alpha=0.3, color='gray')
+    ax[0].plot(z_list, fracz_Mdet, color='Red', linewidth=3, linestyle='--', label='Rate of confusion between detections')
+    ax[0].plot(z_list, fracz_M0p1, color='blue', alpha=0.5, linewidth=1.8, linestyle='-', label='Rate of confusion between a detection and $\geq 0.1\,M_{\mathrm{det}}$')
+    ax[0].plot(frac_Msum[0], frac_Msum[1], color='black', alpha=0.7, linestyle='-.', linewidth=2.5, label='$M_{\mathrm{stack}} / M_{\mathrm{lim}}$')
+
+    ax[0].legend(loc='upper right', fontsize=8)
+    #ax2.legend(loc='upper right')
     ax[0].set_ylim(0, 0.82)
-    ax2.set_ylim(0, 0.82)
+    #ax2.set_ylim(0, 0.82)
     ax[0].set_yticks([0,0.2,0.4,0.6,0.8])
-    ax2.set_yticks([0,0.2,0.4,0.6,0.8])
+    #ax2.set_yticks([0,0.2,0.4,0.6,0.8])
     ax[0].set_xlabel('Redshift')
-    ax[0].set_ylabel('Fraction of Sources in Blends')
-    ax2.set_ylabel('Fractional Mass')
+    ax[0].set_ylabel('Contamination fraction')
+    #ax2.set_ylabel('Fractional Mass')
 
     colors = cm.get_cmap('viridis')(np.linspace(0, 1, 4))
     z_step = 1000./300000.
@@ -97,8 +113,10 @@ def plot_fracz_combined():
     #plt.title('Confused with galaxy with atleast 10% of MHI')
     ax[1].set_xlabel('log($M_{\mathrm{HI}}/M_{\odot}$)')
     ax[1].set_ylabel('Fraction of Sources in blends')
+    ax[0].grid(True, linewidth=0.4)
+    ax[1].grid(True, linewidth=0.4)
     plt.tight_layout()
-    plt.savefig('Plots/Confusion_paperPlot.pdf')
+    plt.savefig('Plots/Confusion_paperPlot.pdf', bbox_inches='tight')
     plt.show()
 
 def detections_And0p1(det_file, tenpercent_file):

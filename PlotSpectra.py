@@ -97,7 +97,16 @@ def center_profile(V, S):
     return V, S
 
 def BusyShapes_PaperPlot():
-    plt.figure(dpi=400)
+    mpl.rcParams.update({
+        'font.size': 15,         
+        'axes.labelsize': 15,     
+        'axes.titlesize': 15,
+        'xtick.labelsize': 15,
+        'ytick.labelsize': 15,
+        'legend.fontsize': 9,
+        'legend.title_fontsize': 9,
+    })
+    plt.figure(dpi=300, figsize=[6.5,5])
     catalog = np.load('catalogs_output/VolLim_20to80deg_Dmax200_rank0.npy')
     MHI = catalog[0]
     lg_MHI = np.log10(MHI)
@@ -119,10 +128,10 @@ def BusyShapes_PaperPlot():
     linestyles=['-', '--', '-.', ':', '-', '--']
     
     color = cm.get_cmap('Dark2', len(cvals)).colors
-    font = {'weight' : 'normal',
-        'size'   : 12}
+    # font = {'weight' : 'normal',
+    #     'size'   : 12}
 
-    mpl.rc('font', **font)
+    # mpl.rc('font', **font)
     #color = cm.get_cmap('viridis', len(cvals)+1).colors
     #color = cm.Blues_r(np.linspace(0, 1, len(cvals)+3))
     #color = cmc.vanimo(np.linspace(0, 1, len(cvals)))
@@ -147,14 +156,14 @@ def BusyShapes_PaperPlot():
     SNR_var = np.std(SNRs) / np.mean(SNRs)
     print("SNR variation is ", SNR_var*100)
     plt.legend(fontsize=10, loc='upper left')
-    plt.xlabel('Velocity (km/s)', fontsize=13)
-    plt.ylabel('Flux Density (mJy)', fontsize=13)
+    plt.xlabel('Velocity (km/s)')
+    plt.ylabel('Flux Density (mJy)')
     plt.xlim(-580,430)
     #plt.ylim(0,4)
     plt.title(f'log$(M_{{\mathrm{{HI}}}}/M_{{\odot}})$ = {lg_MHI[mask][0]:.1f}, $W_{{50}}$ = {W50[mask][0]:.0f} km s$^{{-1}}$', fontsize=14)
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig('Plots/Busy_shapes.pdf')
+    plt.savefig('Plots/Busy_shapes.pdf', )
     plt.show()
 
 
