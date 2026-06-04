@@ -40,6 +40,154 @@ def Table3_Ma2024():
         ])
     return data
 
+def ALFALFA_data():
+    data = np.array([
+        [6.3,0.0276812225316,0.0276812225316,1.0],
+        [6.5,0.0523692162455,0.0215726434275,6.0],
+        [6.7,0.0850052199706,0.02799114127,14.0],
+        [6.9,0.0414296070178,0.0104943631974,19.0],
+        [7.1,0.0465782100978,0.00768057905896,39.0],
+        [7.3,0.0505468482757,0.00670275759855,63.0],
+        [7.5,0.0526965151773,0.00518110746144,125.0],
+        [7.7,0.039598516033,0.00325602462586,161.0],
+        [7.9,0.0302812477439,0.0023505200804,183.0],
+        [8.1,0.0303255233158,0.00196070586552,264.0],
+        [8.3,0.0261821678118,0.00151080858312,326.0],
+        [8.5,0.0240819975426,0.00120627674354,443.0],
+        [8.7,0.0197387368449,0.00087689519889,627.0],
+        [8.9,0.0167018748042,0.000592073613198,973.0],
+        [9.1,0.016787076939,0.000434203186573,1812.0],
+        [9.3,0.0120179525493,0.00027072425385,2434.0],
+        [9.5,0.00949498146181,0.000178300988564,3366.0],
+        [9.7,0.00621279943096,0.000108839454272,3753.0],
+        [9.9,0.00431128021672,7.19176803476e-05,3958.0],
+        [10.1,0.00247140199652,4.64539757974e-05,2931.0],
+        [10.3,0.000819443257702,2.52816960961e-05,1053.0],
+        [10.5,0.000189405705098,1.20760906937e-05,246.0],
+        [10.7,2.30953143642e-05,4.21660821664e-06,30.0],
+    ])
+    return data
+
+# def HIPASS_data():
+#     data = np.array([
+#         [15411163.230713407, 0.18476769434849769],
+#         [20225692.44130829, 0.1331071485590051],
+#         [28236119.351101607, 0.08034371985275895],
+#         [40405461.50323362, 0.08901804889000405],
+#         [59266405.313007504, 0.06415497450827469],
+#         [77781544.97603874, 0.045062643632990604],
+#         [115507931.54233117, 0.049934623201981033],
+#         [163260131.92892936, 0.04753069762123127],
+#         [227919641.50541875, 0.05005909405663482],
+#         [322144031.5354627, 0.05012258017161764],
+#         [449729834.915456, 0.036116615980453626],
+#         [643556620.0007282, 0.0287989095849403],
+#         [898438537.2349018, 0.0288341278300408],
+#         [1269862529.4424012, 0.020777826241888103],
+#         [1794837127.8070443, 0.01880158660855637],
+#         [2568384896.3243747, 0.014617546414575276],
+#         [3541563157.335882, 0.01080233064766741],
+#         [5067923535.6548, 0.007035166356866691],
+#         [7075085030.104883, 0.004140339136558963],
+#         [10000000000, 0.001709900993444972],
+#         [13960520478.118752, 0.001006311669643923],
+#         [19731947275.143707, 0.00040520849994348315],
+#         [27208514421.709694, 0.00009350331886896894],
+#         [38934974326.90512, 0.00001553021034170535],
+#         [57109506573.145454, 0.000003770527659233106],
+#     ])
+#     return data
+
+def HIPASS_data():
+    data = np.array([
+        [7.188839285714286, -0.7362637362637365],
+        [7.310714285714286, -0.8846153846153846],
+        [7.455357142857143, -1.1016483516483517],
+        [7.6120535714285715, -1.054945054945055],
+        [7.774107142857143, -1.206043956043956],
+        [7.8933035714285715, -1.3489010989010992],
+        [8.066071428571428, -1.3159340659340664],
+        [8.214732142857143, -1.3324175824175826],
+        [8.358035714285714, -1.3076923076923077],
+        [8.51205357142857, -1.3076923076923077],
+        [8.655357142857143, -1.4532967032967035],
+        [8.806696428571428, -1.5604395604395607],
+        [8.954017857142858, -1.5494505494505497],
+        [9.105357142857143, -1.6923076923076925],
+        [9.254017857142857, -1.7362637362637363],
+        [9.408035714285713, -1.8434065934065935],
+        [9.55, -1.978021978021978],
+        [9.7, -2.1648351648351647],
+        [9.850000000000001, -2.4065934065934065],
+        [9.998660714285714, -2.7802197802197806],
+        [10.143303571428572, -3.01098901098901],
+        [10.295982142857143, -3.4120879120879115],
+        [10.43392857142857, -4.04120879120879],
+        [10.589285714285714, -4.824175824175822],
+        [10.754017857142857, -5.44230769230769]
+    ])
+
+    tops = np.array([
+        -0.5494505494505493,
+        -0.7252747252747251,
+        -0.9395604395604396,
+        -0.9423076923076921,
+        -1.093406593406594,
+        -1.2527472527472527,
+        -1.2362637362637365,
+        -1.2857142857142865,
+        -1.2527472527472527,
+        -1.2582417582417584,
+        -1.4010989010989015,
+        -1.5082417582417587,
+        -1.4972527472527477,
+        -1.6373626373626373,
+        -1.6785714285714288,
+        -1.7774725274725278,
+        -1.9120879120879124,
+        -2.107142857142857,
+        -2.3379120879120876,
+        -2.7252747252747254,
+        -2.956043956043956,
+        -3.3571428571428577,
+        -3.9862637362637363,
+        -4.722527472527478,
+        -5.296703296703296,
+    ])
+
+    bottoms = np.array([
+        -1.1153846153846156,
+        -1.1923076923076925,
+        -1.3873626373626375,
+        -1.236263736263736,
+        -1.3928571428571428,
+        -1.4725274725274722,
+        -1.403846153846154,
+        -1.3928571428571426,
+        -1.357142857142857,
+        -1.3626373626373625,
+        -1.5137362637362637,
+        -1.60989010989011,
+        -1.6016483516483517,
+        -1.7362637362637363,
+        -1.7912087912087915,
+        -1.89010989010989,
+        -2.0219780219780223,
+        -2.2115384615384612,
+        -2.4478021978021975,
+        -2.8351648351648366,
+        -3.057692307692309,
+        -3.461538461538461,
+        -4.112637362637363,
+        -4.96978021978022,
+        -5.6923076923076925,
+    ])
+
+    H0_corr = (75/70)**3
+    data[:,1] = 10**(data[:,1])*H0_corr
+    error = (10**tops)*H0_corr - (10**bottoms)*H0_corr
+    return data[4:-1,:], error[4:-1]
+
 def HIMF_Counts(catalogs, labels, ALF, RMS, showSurveys=True, 
                 minCount=10, mockAlf=[False,False,False], solidang=[None, None, None]):
     
@@ -131,16 +279,32 @@ def HIMF_Counts_err(err_cat, labels, ALF, RMS, showSurveys=True,
 
     HI_surveys = Table3_Ma2024()
     lg_MHI = HI_surveys[:,0]
-    HIPASS = HI_surveys[:,1]
-    HIPASS_err = HI_surveys[:,2]
-    ALFALFA = HI_surveys[:,3]
-    ALFALFA_err = HI_surveys[:,4]
+    # HIPASS = HI_surveys[:,1]
+    # HIPASS_err = HI_surveys[:,2]
+    #ALFALFA = HI_surveys[:,3]
+    #ALFALFA_err = HI_surveys[:,4]
     FASHI_N = HI_surveys[:,5]
     FASHI_N_err = HI_surveys[:,6] 
     FASHI_S = HI_surveys[:,7]
     FASHI_S_err = HI_surveys[:,8]
     Total = HI_surveys[:,9]
     Total_err = HI_surveys[:,10]
+
+    ALF_data = ALFALFA_data()
+    ALF_x = ALF_data[:,0]
+    ALFALFA = ALF_data[:,1]
+    ALFALFA_err = ALF_data[:,2]
+    ALF_count = ALF_data[:,3]
+    # remove datapoints which have less than 10 sources in the mass bin
+    ALF_x = ALF_x[ALF_count > minCount]
+    ALFALFA = ALFALFA[ALF_count > minCount]
+    ALFALFA_err = ALFALFA_err[ALF_count > minCount]
+
+    HIPASS_dat, HIPASS_error = HIPASS_data()
+    HIP_x = HIPASS_dat[:,0]
+    HIPASS = HIPASS_dat[:,1]
+    HIPASS_err = HIPASS_error
+    print("error shape", HIPASS_err.shape)
 
     for i in range(len(err_cat)):
         if i < 2:
@@ -171,11 +335,11 @@ def HIMF_Counts_err(err_cat, labels, ALF, RMS, showSurveys=True,
             axs[1].step(mid_bins, Counts_mean, color=color[i], label=labels[i]+f', {solidang:.0f} deg$^{{2}}$ \n\t Total: {mantissa}${{\\times}}$10$^{exponent}$', where='post')
             axs[1].fill_between(mid_bins, Counts_mean-Counts_std, Counts_mean+Counts_std, alpha=0.3, color=color[i], step='post')
 
-            relative_uncertainty = Counts_std / Counts_mean
-            relative_uncertainty[Counts_mean < 10] = np.nan # mask
-            poisson = np.sqrt(Counts_mean) / Counts_mean
-            #mask = (Counts_mean < 10) | (Counts_mean > 100)
-            poisson[Counts_mean < 10] = np.nan
+            # relative_uncertainty = Counts_std / Counts_mean
+            # relative_uncertainty[Counts_mean < 10] = np.nan # mask
+            # poisson = np.sqrt(Counts_mean) / Counts_mean
+            # #mask = (Counts_mean < 10) | (Counts_mean > 100)
+            # poisson[Counts_mean < 10] = np.nan
             # axs[2].scatter(mid_bins, relative_uncertainty, color=color[i], s=5)
             # axs[2].bar(mid_bins, poisson, color=color[i], linestyle='--', alpha=0.4)
             # if i==0:
@@ -195,10 +359,12 @@ def HIMF_Counts_err(err_cat, labels, ALF, RMS, showSurveys=True,
     axs[0].set_yscale('log')
 
     if showSurveys:
-        axs[0].errorbar(lg_MHI, ALFALFA, yerr=ALFALFA_err,
+        axs[0].errorbar(ALF_x, ALFALFA, yerr=ALFALFA_err,
                     fmt='.', ecolor='gray', capsize=3, elinewidth=1, markeredgewidth=0.3, color=color[2], label='ALFALFA')
-        axs[0].errorbar(lg_MHI, HIPASS, yerr=HIPASS_err,
-                fmt='.', ecolor='gray', capsize=3, elinewidth=1, markeredgewidth=0.3, color=color[3], label='HIPASS')
+        # axs[0].errorbar(lg_MHI, HIPASS, yerr=HIPASS_err,
+        #         fmt='.', ecolor='gray', capsize=3, elinewidth=1, markeredgewidth=0.3, color=color[3], label='HIPASS')
+        axs[0].errorbar(HIP_x, HIPASS, yerr=HIPASS_err,
+               fmt='.', ecolor='gray', capsize=3, elinewidth=1, markeredgewidth=0.3, color=color[3], label='HIPASS')
         #print(HIPASS_err)
         axs[0].errorbar(lg_MHI, FASHI_N, yerr=FASHI_N_err,
                 fmt='.', ecolor='gray', capsize=3, elinewidth=1, markeredgewidth=0.3, color=color[4], label='FASHI N')
@@ -210,7 +376,7 @@ def HIMF_Counts_err(err_cat, labels, ALF, RMS, showSurveys=True,
     MaHIMF = gf.HIMF_Ma2024(MHI=gf.MHI_grid)
 
     axs[0].plot(np.log10(gf.MHI_grid), JonesHIMF, label='Jones+2018', color='gray', linewidth=1, linestyle='--') # HIMF
-    axs[0].plot(np.log10(gf.MHI_grid), MaHIMF, label='Ma+2024', color='purple', linewidth=1, linestyle=':') # HIMF
+    axs[0].plot(np.log10(gf.MHI_grid), MaHIMF, label='Ma+2025', color='purple', linewidth=1, linestyle=':') # HIMF
     
     axs[0].set_ylabel('$\phi(M_{HI})h_{70}^{-3}$[Mpc$^{-3}$ dex$^{-1}$]')
     axs[1].set_ylabel('Counts')
@@ -234,7 +400,7 @@ def HIMF_Counts_err(err_cat, labels, ALF, RMS, showSurveys=True,
     #axs[0].tick_params(labelbottom=False) 
     #axs[0].set_title('D < 40 Mpc')
     #plt.tight_layout()
-    plt.savefig('Plots/PhiCounts_error_z1.pdf', bbox_inches='tight')
+    plt.savefig('Plots/PhiCounts_error_z1_HIPASS.pdf', bbox_inches='tight')
     #plt.show()
 
 def Counts_err(err_cat):
@@ -345,11 +511,6 @@ def z_Counts_err(err_cats, labels, mask=True, log=True, zmax=1):
             Counts_mean = np.mean(z_counts[:,mask], axis=0)[0]
             Counts_std = np.std(z_counts[:,mask], axis=0)[0]
 
-            # x = np.insert(mid_bins, 0, z_bins[0])
-            # y = np.insert(Counts_mean, 0, 0)
-            # y_low = np.insert(Counts_mean - Counts_std, 0, 0)
-            # y_high = np.insert(Counts_mean + Counts_std, 0, 0)
-
             axs.step(z_bins, Counts_mean, where='post', label=labels[i], color=color[i])
             axs.fill_between(z_bins, Counts_mean-Counts_std, Counts_mean+Counts_std, alpha=0.3, color=color[i], step='post')
         else:
@@ -358,7 +519,8 @@ def z_Counts_err(err_cats, labels, mask=True, log=True, zmax=1):
     axs.grid(True, linewidth=0.3)
     axs.set_ylabel('Counts')
     axs.set_xlabel('Redshift')
-    axs.set_ylim(0.5, 10**5.5)
+    axs.set_ylim(5, 10**5.5)
+    axs.set_xlim(-0.05, 0.65)
     if mask:
         legend_patch = add_zmask(ax=axs)
     if log:
@@ -470,14 +632,14 @@ def Show_Catalogs(catalogs):
 
 if __name__ == "__main__":
     # Counts_err(err_cat='phi_counts_checkpoint_5yr_z1_1000.npy')
-    z_Counts_err(err_cats=['z_counts_checkpoint_5yr_z1_1000.npy',
-                          'z_counts_checkpoint_1yr_z1_1000.npy',
-                          'catalogs_output/ALFALFA_a100_90complete.npy'],
-                          labels=['5 year CHORD', '1 year CHORD', 'ALFALFA'])
-    # HIMF_Counts_err(err_cat=['phi_counts_checkpoint_5yr_z1_1000.npy',    
-    #                          'phi_counts_checkpoint_1yr_z1_1000.npy',
-    #                          'catalogs_output/ALFALFA_a100_90complete.npy'], 
-    #                 labels=['5 year', '1 year', 'ALFALFA'], ALF=None, RMS=None, showSurveys=True, minCount=10)
+    # z_Counts_err(err_cats=['z_counts_checkpoint_5yr_z1_1000.npy',
+    #                       'z_counts_checkpoint_1yr_z1_1000.npy',
+    #                       'catalogs_output/ALFALFA_a100_90complete.npy'],
+    #                       labels=['5 year CHORD', '1 year CHORD', 'ALFALFA'])
+    HIMF_Counts_err(err_cat=['phi_counts_checkpoint_5yr_z1_1000.npy',    
+                             'phi_counts_checkpoint_1yr_z1_1000.npy',
+                             'catalogs_output/ALFALFA_a100_90complete.npy'], 
+                    labels=['5 year', '1 year', 'ALFALFA'], ALF=None, RMS=None, showSurveys=True, minCount=10)
     #Counts_err(err_cat='phi_counts_z0p3to0p7_100.npy')
     #HIMF_Counts_err(err_cat='phi_counts_z0p3to0p7_100.npy', labels=None, ALF=None, RMS=None, showSurveys=False, minCount=10)
     #HIMF_Counts_err(err_cat='phi_counts_z0p1_100.npy', labels=None, ALF=None, RMS=None, showSurveys=True, minCount=10)

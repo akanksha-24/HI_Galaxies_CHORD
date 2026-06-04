@@ -13,6 +13,8 @@ import Galaxy_Functions as gf
 from Gaussian_Estimate import *
 from CHORD_Sensitivity import *
 import matplotlib as mpl
+import matplotlib.patches as patches
+import itertools
 
 upchan_res = gf.width_vel2freq(del_Vrest=5) # u.Hz
 
@@ -609,21 +611,21 @@ def W50z_Plane_subplots(RMS=0.1, sigma=6):
     levels_5yr = [[5,6,7,7.5,8],
             [9,10,10.5,11]]
 
-    manual_locations5 = [[(0.0, 1.3), (20, 1.35), (40, 1.4), (80, 1.5), (120, 2.0)],
-                    [(0.05, 1.3), (0.3, 1.4), (0.48, 1.45), (0.75, 1.5)]]
+    manual_locations5 = [[(0.0, 1.47), (20, 1.49), (40, 1.53), (80, 1.65), (120, 1.8)],
+                    [(0.05, 1.49), (0.3, 1.53), (0.48, 1.57), (0.75, 1.62)]]
 
     levels_1yr = [[6,7,7.5,8],
             [10,10.5,11,11.5]]
 
-    manual_locations1 = [[(5, 1.6), (20, 1.65), (40, 1.75), (80, 1.85)],
+    manual_locations1 = [[(5, 1.65), (20, 1.73), (40, 1.8), (80, 1.9)],
                     [(0.1, 1.9), (0.3, 1.95), (0.55, 2.1), (0.85, 2.3)]]
     
 
     im = ax[0].imshow(np.log10(MHI_2d_5year), extent=[D_2d.min(), D_2d.max(), lg_W50.min(), lg_W50.max()], origin='lower', aspect='auto')  
     ax[0].set_xlabel('Distance (Mpc)')
     ax[0].set_xlim(0,128)
-    ax[0].set_ylim(1.2,2.2)
-    ax[1].set_ylim(1.2,2.7)
+    ax[0].set_ylim(1.4,2.2)
+    ax[1].set_ylim(1.4,2.7)
 
     im = ax[1].imshow(np.log10(MHI_2d_5year), extent=[z_2d.min(), z_2d.max(), lg_W50.min(), lg_W50.max()], origin='lower', aspect='auto') 
     ax[1].set_xlim(0.03,1)
@@ -647,7 +649,7 @@ def W50z_Plane_subplots(RMS=0.1, sigma=6):
     ax[1].clabel(CS, inline=True, inline_spacing=0, fontsize=10, fmt=lambda v: f" {v:.1f} ", manual=manual_locations1[1])
 
     ax[0].set_ylabel('log(W50/km s$^{-1}$)')
-    ax[1].set_yticks([1.2,1.4,1.6,1.8,2,2.2,2.4,2.6])
+    ax[1].set_yticks([1.4,1.6,1.8,2,2.2,2.4,2.6])
     
     cbar = fig.colorbar(im, ax=ax, pad=0.01)
     cbar.set_label(r"log($M_{\mathrm{HI}}/M_\odot$)")
@@ -673,16 +675,30 @@ def W50z_Plane_subplots(RMS=0.1, sigma=6):
     plt.savefig("Plots/DistanceDetect_withScanTime.pdf", bbox_inches='tight')
 
 def W50z_Plane_subplots_zD(RMS=0.1, sigma=6):
-    RMS_1year = 0.18
-    RMS_5year = 0.08
-    fig, ax = plt.subplots(1, 2, figsize=[12,4.5], dpi=300)
-    plt.subplots_adjust(wspace=0.15)
-    lg_W50 = np.linspace(1, 2.7, 1000)
+    mpl.rcParams.update({
+    'font.size': 14,
+    'axes.labelsize': 14,
+    'axes.titlesize': 14,
+    'xtick.labelsize': 14,
+    'ytick.labelsize': 14,
+    'legend.fontsize': 14
+    })
+    fig, ax = plt.subplots(1, 2, figsize=[14,4.5], dpi=300, sharey=True)
+    plt.subplots_adjust(wspace=0.05)
+    #dW = 1e-2
+    #lg_W50 = np.arange(1, 2.7, dW)
+    lg_W50 = np.linspace(1,2.7,1000)
     z = np.linspace(0,1,10000)
+    _, RMS_5yr, _ = build_survey(obs_years=5, z=z)
+    print("5 year RMS is", RMS_5yr)
+    _, RMS_1yr, _ = build_survey(obs_years=1, z=z, end=50)
+    print("1 year RMS is", RMS_1yr)
+
     z_2d, lgW50_2d = np.meshgrid(z, lg_W50)
     D_2d = gf.Comoving_Dist(z_2d).to_value(u.Mpc)
-    MHI_2d_5year = gf.estimate_MHImax(z=z_2d, sigma=sigma, RMS_chan=RMS_5year, DeltaV=10**(lgW50_2d))
-    MHI_2d_1year = gf.estimate_MHImax(z=z_2d, sigma=sigma, RMS_chan=RMS_1year, DeltaV=10**(lgW50_2d))
+    MHI_2d_5year = gf.estimate_MHImax(z=z_2d, sigma=sigma, RMS_chan=RMS_5yr, DeltaV=10**(lgW50_2d), chan_width=upchan_res)
+    MHI_2d_1year = gf.estimate_MHImax(z=z_2d, sigma=sigma, RMS_chan=RMS_1yr, DeltaV=10**(lgW50_2d), chan_width=upchan_res)
+    print("MHI shape OG", MHI_2d_5year.shape)
     # levels_5yr = [[5,6,6.5,7,7.5,8],
     #         [9,10,10.5,11]]
 
@@ -695,45 +711,88 @@ def W50z_Plane_subplots_zD(RMS=0.1, sigma=6):
     # manual_locations1 = [[(0.003, 1.6), (0.004, 1.65), (0.01, 1.7), (0.017, 1.75), (0.024, 1.85)],
     #                 [(0.1, 1.9), (0.45, 2.1), (0.65, 2.2), (0.85, 2.3)]]
 
-    levels_5yr = [[5,6,7,7.5,8],
+    levels_5yr = [[5,6,7,7.5],#,8],
             [9,10,10.5,11]]
 
-    manual_locations5 = [[(0.0, 1.2), (0.005, 1.2), (0.013, 1.3), (0.018, 1.4), (0.029, 1.9)],
-                    [(0.05, 1.2), (0.3, 1.3), (0.48, 1.4), (0.75, 1.5)]]
+    manual_locations5 = [[(0.0, 1.3), (0.003, 1.55), (0.012, 1.7), (0.018, 1.8)],#, (0.018, 2.5)],
+                    [(0.05, 1.3), (0.3, 1.6), (0.48, 1.7), (0.75, 1.8)]]
 
     levels_1yr = [[6,7,7.5,8],
             [10,10.5,11,11.5]]
 
-    manual_locations1 = [[(0.003, 1.6), (0.009, 1.65), (0.015, 1.75), (0.024, 1.85)],
+    manual_locations1 = [[(0.003, 1.91), (0.007, 1.93), (0.01, 1.95), (0.02, 2.3)],
                     [(0.1, 1.9), (0.3, 1.95), (0.55, 2.1), (0.85, 2.3)]]
-    ax[0].set_xlim(0,0.03)
-    ax[0].set_ylim(1,2.2)
+    ax[0].set_xlim(0,0.02)
     ax[1].set_xlim(0.03,1)
+    ax[0].set_ylim(1.2,2.7)
+    ax[1].set_ylim(1.2,2.7)
+    MHI_2d_5year[np.isnan(MHI_2d_5year)==True]=10**5
 
     for i in range(2):
         im = ax[i].imshow(np.log10(MHI_2d_5year), extent=[z.min(), z.max(), lg_W50.min(), lg_W50.max()], origin='lower', aspect='auto')  
-        ax[i].set_xlabel('Redshift z')
+        ax[i].set_xlabel('Redshift')
 
         ax_dist = ax[i].twiny()
-        ax_dist.set_xlim(ax[i].get_xlim())
+        ax_dist.set_xlim(gf.Comoving_Dist(ax[i].get_xlim()).to_value(u.Mpc))
 
-        z_ticks = np.round(np.linspace(*ax[i].get_xlim(), 5), 3)
-        D_ticks = gf.Comoving_Dist(z_ticks).to_value(u.Mpc)
+        if i==0:
+            z_ticks = [0,0.01,0.02]
+            D_ticks = [0,20,40,60,80]
+        else:
+            z_ticks = [0.25,0.5,0.75,1.0]
+            D_ticks = [1000,2000,3000]
 
+        #D_ticks = gf.Comoving_Dist(z_ticks).to_value(u.Mpc)
         ax[i].set_xticks(z_ticks)
-        ax_dist.set_xticks(z_ticks)
-        ax_dist.set_xticklabels([f"{d:.0f}" for d in D_ticks])
+        ax_dist.set_xticks(D_ticks)
+        #ax_dist.set_xticklabels([f"{d:.0f}" for d in D_ticks])
         ax_dist.set_xlabel("Distance (Mpc)")
 
-        CS = ax[i].contour(z_2d, lgW50_2d, np.log10(MHI_2d_5year),
-            levels=levels_5yr[i], colors='black', linewidths=1, linestyles='--') 
-        ax[i].clabel(CS, inline=True, inline_spacing=0, fontsize=10, fmt=lambda v: f" {v:.1f} ", manual=manual_locations5[i])
+    # end contour at W50 = 2VHI
+        for j in range(len(levels_5yr[i])):
+            VHI_5 = np.log10(W50_broadened(2*gf.VHI_polyFit(10**levels_5yr[i][j])))
+            print(VHI_5)
+            #print(np.)
+            #lg_W50_5 = np.arange(1, 2*VHI_5, dW)
+            #z_2d_5, lgW50_2d_5 = np.meshgrid(z, lg_W50_5)
+            mask_ = lgW50_2d > VHI_5
+            MHI_copy = np.log10(MHI_2d_5year).copy()
+            MHI_copy2 = np.log10(MHI_2d_5year).copy()
+            MHI_copy[lgW50_2d > VHI_5] = np.nan
+            MHI_copy2[lgW50_2d < VHI_5] = np.nan
+            #MHI_2d_5year_re = gf.estimate_MHImax(z=z_2d, sigma=sigma, RMS_chan=RMS_5yr, DeltaV=10**(lgW50_2d), chan_width=upchan_res)
+        
+            CS = ax[i].contour(z_2d, lgW50_2d, MHI_copy,
+                levels=[levels_5yr[i][j]], colors='black', linewidths=1, linestyles='--') 
+            ax[i].clabel(CS, inline=True, inline_spacing=0, fontsize=10, manual=[manual_locations5[i][j]], fmt=lambda v: f" {v:.1f} ")
 
-        CS = ax[i].contour(z_2d, lgW50_2d, np.log10(MHI_2d_1year),
-            levels=levels_1yr[i], colors='white', linewidths=1, linestyles='-.') 
-        ax[i].clabel(CS, inline=True, inline_spacing=0, fontsize=10, fmt=lambda v: f" {v:.1f} ", manual=manual_locations1[i])
+            CS = ax[i].contour(z_2d, lgW50_2d, MHI_copy2,
+                levels=[levels_5yr[i][j]], colors='lightgray', linewidths=1, linestyles='--', alpha=0.3) 
+            #ax[i].clabel(CS, inline=True, inline_spacing=0, fontsize=10, manual=[manual_locations5[i][j]], fmt=" ")
+
+        for j in range(len(levels_1yr[i])):
+            VHI_1 = np.log10(W50_broadened(2*gf.VHI_polyFit(10**levels_1yr[i][j])))
+            print(VHI_1)
+            #print(np.)
+            #lg_W50_5 = np.arange(1, 2*VHI_5, dW)
+            #z_2d_5, lgW50_2d_5 = np.meshgrid(z, lg_W50_5)
+            mask_ = lgW50_2d > VHI_1
+            MHI_copy = np.log10(MHI_2d_1year).copy()
+            MHI_copy2 = np.log10(MHI_2d_1year).copy()
+            MHI_copy[lgW50_2d > VHI_1] = np.nan
+            MHI_copy2[lgW50_2d < VHI_1] = np.nan
+            #MHI_2d_5year_re = gf.estimate_MHImax(z=z_2d, sigma=sigma, RMS_chan=RMS_5yr, DeltaV=10**(lgW50_2d), chan_width=upchan_res)
+        
+            CS = ax[i].contour(z_2d, lgW50_2d, MHI_copy,
+                levels=[levels_1yr[i][j]], colors='white', linewidths=1, linestyles='-.') 
+            ax[i].clabel(CS, inline=True, inline_spacing=0, fontsize=10, manual=[manual_locations1[i][j]], fmt=lambda v: f" {v:.1f} ")
+
+            CS = ax[i].contour(z_2d, lgW50_2d, MHI_copy2,
+                levels=[levels_1yr[i][j]], colors='lightgray', linewidths=1, linestyles='-.', alpha=0.3) 
+            #ax[i].clabel(CS, inline=True, inline_spacing=0, fontsize=10, manual=[manual_locations5[i][j]], fmt=lambda v: f" {v:.1f} ")
 
     ax[0].set_ylabel('log(W50/km s$^{-1}$)')
+    ax[0].set_yticks([1.4,1.8,2.2,2.6])
     
     cbar = fig.colorbar(im, ax=ax, pad=0.01)
     cbar.set_label(r"log($M_{\mathrm{HI}}/M_\odot$)")
@@ -741,9 +800,9 @@ def W50z_Plane_subplots_zD(RMS=0.1, sigma=6):
 
     legend_elements = [
     Line2D([0], [0], color='black', lw=1, linestyle='--',
-           label='5-year survey'),
+           label='5 year'),
     Line2D([0], [0], color='white', lw=1, linestyle='-.',
-           label='1-year survey'),
+           label='1 year'),
     ]
 
     # fig.legend(
@@ -758,16 +817,20 @@ def W50z_Plane_subplots_zD(RMS=0.1, sigma=6):
         handles=legend_elements,
         ncol=1,
         frameon=True,
-        bbox_to_anchor=(0.72, 0.92),
+        bbox_to_anchor=(0.84, 0.90),
         loc='center',
     )
 
     leg.get_frame().set_facecolor('gray')
     leg.get_frame().set_alpha(0.3)
 
+    # y0, y1 = 2.2, 2.7 
+    # x0, x1 = ax[0].get_xlim()    
+    # rect = patches.Rectangle((x0, y0), x1 - x0, y1 - y0, linewidth=1, edgecolor='lightgray', facecolor='lightgray', alpha=0.3)
+    # ax[0].add_patch(rect)
 
     #plt.tight_layout()
-    plt.savefig("Plots/DistanceDetect_subplots.png")
+    plt.savefig("Plots/DistanceDetect_zD.pdf", bbox_inches='tight')
     #plt.show()
 
     # if nearby:
@@ -790,25 +853,62 @@ def W50z_Plane_subplots_zD(RMS=0.1, sigma=6):
     # plt.show()
 
 def W50z_Plane_oneplot(RMS=0.1, sigma=6):
-    plt.figure(figsize=[12,4], dpi=300)
-    lg_W50 = np.linspace(1, 2.5, 1000)
+    mpl.rcParams.update({
+    'font.size': 14,
+    'axes.labelsize': 14,
+    'axes.titlesize': 14,
+    'xtick.labelsize': 14,
+    'ytick.labelsize': 14,
+    'legend.fontsize': 14
+    })
+    fig, ax = plt.subplots(1, 1, figsize=[13,4.5], dpi=300)
+    #plt.subplots_adjust(wspace=0.17)
+    lg_W50 = np.linspace(1, 2.7, 1000)
     z = np.linspace(0,1,10000)
+    _, RMS_5yr, _ = build_survey(obs_years=5, z=z)
+    print("5 year RMS is", RMS_5yr)
+    _, RMS_1yr, _ = build_survey(obs_years=1, z=z, end=50)
+    print("1 year RMS is", RMS_1yr)
+
     z_2d, lgW50_2d = np.meshgrid(z, lg_W50)
     D_2d = gf.Comoving_Dist(z_2d).to_value(u.Mpc)
-    MHI_2d_5year = gf.estimate_MHImax(z=z_2d, sigma=sigma, RMS_chan=RMS_5year, DeltaV=10**(lgW50_2d))
-    MHI_2d_1year = gf.estimate_MHImax(z=z_2d, sigma=sigma, RMS_chan=RMS_1year, DeltaV=10**(lgW50_2d))
-    levels = [5,6,7,8,9,10,11]
+    MHI_2d_5year = gf.estimate_MHImax(z=z_2d, sigma=sigma, RMS_chan=RMS_5yr, DeltaV=10**(lgW50_2d), chan_width=upchan_res)
+    MHI_2d_1year = gf.estimate_MHImax(z=z_2d, sigma=sigma, RMS_chan=RMS_1yr, DeltaV=10**(lgW50_2d), chan_width=upchan_res)
+    # levels_5yr = [[5,6,6.5,7,7.5,8],
+    #         [9,10,10.5,11]]
 
-    plt.imshow(np.log10(MHI_2d), extent=[z.min(), z.max(), lg_W50.min(), lg_W50.max()], origin='lower', aspect='auto')  
-    plt.xlabel('Redshift z')
-    plt.ylabel('log(W50/km s$^{-1}$)') 
+    # manual_locations5 = [[(0.0, 1.2), (0.005, 1.3), (0.008, 1.4), (0.013, 1.5), (0.018, 1.6), (0.029, 1.9)],
+    #                 [(0.05, 1.4), (0.3, 1.6), (0.48, 1.8), (0.75, 2.0)]]
 
-    ax = plt.axes()
+    # levels_1yr = [[6,6.5,7,7.5,8],
+    #         [10,10.5,11,11.5]]
+
+    # manual_locations1 = [[(0.003, 1.6), (0.004, 1.65), (0.01, 1.7), (0.017, 1.75), (0.024, 1.85)],
+    #                 [(0.1, 1.9), (0.45, 2.1), (0.65, 2.2), (0.85, 2.3)]]
+
+    levels_5yr = [[5,6,7,7.5,8],
+            [9,10,10.5,11]]
+
+    manual_locations5 = [[(0.0, 1.5), (0.005, 1.6), (0.013, 1.7), (0.018, 1.8), (0.029, 1.9)],
+                    [(0.05, 1.5), (0.3, 1.6), (0.48, 1.7), (0.75, 1.8)]]
+
+    levels_1yr = [[6,7,7.5,8],
+            [10,10.5,11,11.5]]
+
+    manual_locations1 = [[(0.003, 1.9), (0.009, 1.95), (0.015, 2.1), (0.024, 2.3)],
+                    [(0.1, 1.9), (0.3, 1.95), (0.55, 2.1), (0.85, 2.3)]]
+    #ax[0].set_xlim(0,0.03)
+    ax.set_ylim(1.4,2.7)
+    #ax[1].set_xlim(0.03,1)
+
+    #for i in range(2):
+    im = ax.imshow(np.log10(MHI_2d_5year), extent=[z.min(), z.max(), lg_W50.min(), lg_W50.max()], origin='lower', aspect='auto')  
+    ax.set_xlabel('Redshift z')
 
     ax_dist = ax.twiny()
     ax_dist.set_xlim(ax.get_xlim())
 
-    z_ticks = np.round(np.linspace(*ax.get_xlim(), 10), 2)
+    z_ticks = np.round(np.linspace(*ax.get_xlim(), 5), 3)
     D_ticks = gf.Comoving_Dist(z_ticks).to_value(u.Mpc)
 
     ax.set_xticks(z_ticks)
@@ -816,12 +916,164 @@ def W50z_Plane_oneplot(RMS=0.1, sigma=6):
     ax_dist.set_xticklabels([f"{d:.0f}" for d in D_ticks])
     ax_dist.set_xlabel("Distance (Mpc)")
 
-    CS = plt.contour(z_2d, lgW50_2d, np.log10(MHI_2d),
-        levels=levels, colors='black', linewidths=1, linestyles='dashed') 
-    plt.clabel(CS, inline=True, inline_spacing=0, fontsize=10, fmt=lambda v: f" {v:.1f}")
+    CS = ax.contour(z_2d, lgW50_2d, np.log10(MHI_2d_5year),
+        levels=levels_5yr[0], colors='black', linewidths=1, linestyles='--') 
+    ax.clabel(CS, inline=True, inline_spacing=0, fontsize=10, fmt=lambda v: f" {v:.1f} ", manual=manual_locations5[0])
 
-    plt.savefig("Plots/DistanceDetect_oneplot.png")
-    plt.show()
+    CS = ax.contour(z_2d, lgW50_2d, np.log10(MHI_2d_5year),
+        levels=levels_5yr[1], colors='black', linewidths=1, linestyles='--') 
+    ax.clabel(CS, inline=True, inline_spacing=0, fontsize=10, fmt=lambda v: f" {v:.1f} ", manual=manual_locations5[1])
+
+    CS = ax.contour(z_2d, lgW50_2d, np.log10(MHI_2d_1year),
+        levels=levels_1yr[0], colors='white', linewidths=1, linestyles='-.') 
+    ax.clabel(CS, inline=True, inline_spacing=0, fontsize=10, fmt=lambda v: f" {v:.1f} ", manual=manual_locations1[0])
+
+    CS = ax.contour(z_2d, lgW50_2d, np.log10(MHI_2d_1year),
+        levels=levels_1yr[1], colors='white', linewidths=1, linestyles='-.') 
+    ax.clabel(CS, inline=True, inline_spacing=0, fontsize=10, fmt=lambda v: f" {v:.1f} ", manual=manual_locations1[1])
+
+    ax.set_ylabel('log(W50/km s$^{-1}$)')
+    
+    cbar = fig.colorbar(im, ax=ax, pad=0.01)
+    cbar.set_label(r"log($M_{\mathrm{HI}}/M_\odot$)")
+    cbar.set_ticks([4,6,8,10])
+
+    legend_elements = [
+    Line2D([0], [0], color='black', lw=1, linestyle='--',
+           label='5-year survey'),
+    Line2D([0], [0], color='white', lw=1, linestyle='-.',
+           label='1-year survey'),
+    ]
+
+    # fig.legend(
+    #     handles=legend_elements,
+    #     ncol=2,
+    #     frameon=True,
+    #     bbox_to_anchor=(0.5, 1.02),
+    #     loc='center',
+    # )
+
+    leg = ax.legend(
+        handles=legend_elements,
+        ncol=1,
+        frameon=True,
+        bbox_to_anchor=(0.72, 0.92),
+        loc='center',
+    )
+
+    leg.get_frame().set_facecolor('gray')
+    leg.get_frame().set_alpha(0.3)
+
+
+    #plt.tight_layout()
+    plt.savefig("Plots/DistanceDetect_onePlot.png")
+    #plt.show()
+
+    # if nearby:
+
+    # else:
+    #     levels = [8,9,10,10.5,11] # in log space
+    #     CS = plt.contour(
+    #         z_2d, lgW50_2d, np.log10(MHI_2d),
+    #         levels=levels, colors='black', linewidths=1, linestyles='dashed'
+    #     )
+
+    # plt.clabel(CS, inline=True, inline_spacing=0, fontsize=10, fmt=lambda v: f" {v:.1f}")
+    # #plt.margins(x=0.02, y=0.02)
+    # #plt.margins(x=0.1, y=0.1)
+    # plt.tight_layout()
+    # if nearby:
+    #     plt.savefig('Plots/W50z_Plane_nearby.png')
+    # else:
+    #     plt.savefig('Plots/W50z_Plane.png')
+    # plt.show()
+
+# def W50z_Plane_oneplot(RMS=0.1, sigma=6):
+#     mpl.rcParams.update({
+#     'font.size': 14,
+#     'axes.labelsize': 14,
+#     'axes.titlesize': 14,
+#     'xtick.labelsize': 14,
+#     'ytick.labelsize': 14,
+#     'legend.fontsize': 14
+#     })
+#     fig = plt.figure(figsize=[12,4], dpi=300)
+#     lg_W50 = np.linspace(1, 2.7, 1000)
+#     z = np.linspace(0,1,10000)
+#     _, RMS_5yr, _ = build_survey(obs_years=5, z=z)
+#     print("5 year RMS is", RMS_5yr)
+#     _, RMS_1yr, _ = build_survey(obs_years=1, z=z, end=50)
+#     print("1 year RMS is", RMS_1yr)
+#     z_2d, lgW50_2d = np.meshgrid(z, lg_W50)
+#     #D_2d = gf.Comoving_Dist(z_2d).to_value(u.Mpc)
+#     MHI_2d_5year = gf.estimate_MHImax(z=z_2d, sigma=sigma, RMS_chan=RMS_5yr, DeltaV=10**(lgW50_2d), chan_width=upchan_res)
+#     MHI_2d_1year = gf.estimate_MHImax(z=z_2d, sigma=sigma, RMS_chan=RMS_1yr, DeltaV=10**(lgW50_2d), chan_width=upchan_res)
+#     #levels = [5,6,7,8,9,10,11]
+
+#     levels_5yr = [5,6,7,7.5,8,9,10,10.5,11]
+
+#     manual_locations5 = [(0.0, 1.2), (0.005, 1.2), (0.013, 1.3), (0.018, 1.4), (0.029, 1.9), 
+#                          (0.05, 1.2), (0.3, 1.3), (0.48, 1.4), (0.75, 1.5)]
+
+#     levels_1yr = [6,7,7.5,8,10,10.5,11,11.5]
+
+#     manual_locations1 = [(0.003, 1.6), (0.009, 1.65), (0.015, 1.75), (0.024, 1.85),
+#                     (0.1, 1.9), (0.3, 1.95), (0.55, 2.1), (0.85, 2.3)]
+
+#     im = plt.imshow(np.log10(MHI_2d_5year), extent=[z.min(), z.max(), lg_W50.min(), lg_W50.max()], origin='lower', aspect='auto')  
+#     plt.xlabel('Redshift z')
+#     plt.ylabel('log(W50/km s$^{-1}$)') 
+
+#     ax = plt.axes()
+
+#     ax_dist = ax.twiny()
+#     ax_dist.set_xlim(ax.get_xlim())
+
+#     z_ticks = np.round(np.linspace(*ax.get_xlim(), 10), 2)
+#     D_ticks = gf.Comoving_Dist(z_ticks).to_value(u.Mpc)
+
+#     ax.set_xticks(z_ticks)
+#     ax_dist.set_xticks(z_ticks)
+#     ax_dist.set_xticklabels([f"{d:.0f}" for d in D_ticks])
+#     ax_dist.set_xlabel("Distance (Mpc)")
+
+#     CS = plt.contour(z_2d, lgW50_2d, np.log10(MHI_2d_5year),
+#         levels=levels_5yr, colors='black', linewidths=1, linestyles='--') 
+#     plt.clabel(CS, inline=True, inline_spacing=0, fontsize=10, fmt=lambda v: f" {v:.1f} ", manual=manual_locations5)
+
+#     CS2 = plt.contour(z_2d, lgW50_2d, np.log10(MHI_2d_1year),
+#         levels=levels_1yr, colors='white', linewidths=1, linestyles='-.') 
+#     plt.clabel(CS2, inline=True, inline_spacing=0, fontsize=10, fmt=lambda v: f" {v:.1f} ", manual=manual_locations1)
+
+#     # CS = plt.contour(z_2d, lgW50_2d, np.log10(MHI_2d),
+#     #     levels=levels, colors='black', linewidths=1, linestyles='dashed') 
+#     # plt.clabel(CS, inline=True, inline_spacing=0, fontsize=10, fmt=lambda v: f" {v:.1f}")
+
+#     plt.set_ylabel('log(W50/km s$^{-1}$)')
+    
+#     cbar = fig.colorbar(im, ax=ax, pad=0.01)
+#     cbar.set_label(r"log($M_{\mathrm{HI}}/M_\odot$)")
+#     cbar.set_ticks([4,6,8,10])
+
+#     legend_elements = [
+#     Line2D([0], [0], color='black', lw=1, linestyle='--',
+#            label='5-year survey'),
+#     Line2D([0], [0], color='white', lw=1, linestyle='-.',
+#            label='1-year survey'),
+#     ]
+#     leg = ax[1].legend(
+#         handles=legend_elements,
+#         ncol=1,
+#         frameon=True,
+#         bbox_to_anchor=(0.72, 0.92),
+#         loc='center',
+#     )
+
+#     leg.get_frame().set_facecolor('gray')
+#     leg.get_frame().set_alpha(0.3)
+
+#     plt.savefig("Plots/DistanceDetect_oneplot.png")
+#     plt.show()
 
 def MHI_redshift(catalog_file, ax=None, figname='', title='', color='', label=''):
     catalog = np.load(catalog_file)
@@ -916,7 +1168,8 @@ def survey_scantime():
 
 if __name__ == "__main__":
     #survey_scantime()
-    #W50z_Plane_subplots()
+    W50z_Plane_subplots_zD()
+    #W50z_Plane_oneplot()
     #check_Spectra()
     #W50z_Plane(nearby=True)
     #LowM_Distance(catalog='catalogs_output/Detected_RMS0p08_VolLim_20to80deg_zmax0p8_full.npy')
@@ -926,8 +1179,8 @@ if __name__ == "__main__":
     #                          labels=['Uniformly Distibuted', 'Large-scale Strcture'], PlotRA=True)
     # dec_solidang_byMHI(catalogs=['DetectionsALFALFA_MockSim_changeVelocity_20to80deg_Dmax200.npy'],
     #                         labels=['Uniformly Distibuted', 'Large-scale Strcture'], normalizeDec=True)
-    dec_solidang_byMHI(catalog_lss='catalogs_output/MockAlf_D200_Dec20to80_ChangeVelocity.npy', 
-                      catalog_volim='DetectionsALFALFA_20to80deg_Dmax200.npy')
+    #dec_solidang_byMHI(catalog_lss='catalogs_output/MockAlf_D200_Dec20to80_ChangeVelocity.npy', 
+    #                  catalog_volim='DetectionsALFALFA_20to80deg_Dmax200.npy')
     # dec_solidang_byMHI(catalogs=['catalogs_output/MockAlf_D200_Dec20to80_ChangeVelocity.npy'],
     #                 labels=['Uniformly Distibuted', 'Large-scale Strcture'], normalizeDec=True)
 

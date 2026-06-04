@@ -137,7 +137,93 @@ def BusyShapes_PaperPlot():
     #color = cmc.vanimo(np.linspace(0, 1, len(cvals)))
     SNRs = []
     for i in range(len(cvals)):
-        final_M, Vel, S_flux, SNR  = spec.Generate_Spectra(size=1, MHI=np.asarray([MHI[mask][0]]), 
+        final_M, Vel, S_flux, SNR  = spec.Generate_Spectra(size=1, MHI=np.asarray([1e10]), 
+                                                                W50=np.asarray([450]), 
+                                                                D_C=np.asarray([D[mask]][0]), 
+                                                                z=np.asarray([z[mask][0]]), 
+                                                                b1=[b1vals[i]],
+                                                                b2=[b2vals[i]],
+                                                                c=[cvals[i]],
+                                                                xe=[0],
+                                                                xp=[0],
+                                                                n=[nvals[i]], 
+                                                                w=1,
+                                                                RMS=[0.3],
+                                                                prevSNR=[6],
+                                                                thermal_broaden=True)
+        # final_M, Vel, S_flux, SNR  = spec.Generate_Spectra(size=1, MHI=np.asarray([MHI[mask][0]]), 
+        #                                                         W50=np.asarray([W50[mask][0]]), 
+        #                                                         D_C=np.asarray([D[mask]][0]), 
+        #                                                         z=np.asarray([z[mask][0]]), 
+        #                                                         b1=[b1vals[i]],
+        #                                                         b2=[b2vals[i]],
+        #                                                         c=[cvals[i]],
+        #                                                         xe=[0],
+        #                                                         xp=[0],
+        #                                                         n=[nvals[i]], 
+        #                                                         w=1,
+        #                                                         RMS=[0.3],
+        #                                                         prevSNR=[6],
+        #                                                         thermal_broaden=True)
+        Vel, S_flux = center_profile(Vel, S_flux)
+        plt.plot(Vel, S_flux, label=f'c={cvals[i]}, b$_{{1}}$={b1vals[i]}, b$_{{2}}$={b2vals[i]}, n={nvals[i]}', color=color[i], linewidth=1.5, linestyle=linestyles[i])
+        print("Final M is ", np.log10(final_M))
+        SNRs.append(SNR[0])
+    SNR_var = np.std(SNRs) / np.mean(SNRs)
+    print("SNR variation is ", SNR_var*100)
+    plt.legend(fontsize=10, loc='upper left')
+    plt.xlabel('Velocity (km/s)')
+    plt.ylabel('Flux Density (mJy)')
+    plt.xlim(-750,550)
+    #plt.ylim(0,4)
+    plt.title(f'log$(M_{{\mathrm{{HI}}}}/M_{{\odot}})$ = {10:.0f}, $2V_{{\mathrm{{HI}}}}$ = {450:.0f} km s$^{{-1}}$', fontsize=14)
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig('Plots/Busy_shapes.pdf', )
+    plt.show()
+
+def BusyShapes_xUnits():
+    mpl.rcParams.update({
+        'font.size': 15,         
+        'axes.labelsize': 15,     
+        'axes.titlesize': 15,
+        'xtick.labelsize': 15,
+        'ytick.labelsize': 15,
+        'legend.fontsize': 9,
+        'legend.title_fontsize': 9,
+    })
+    plt.figure(dpi=300, figsize=[6.5,5])
+    catalog = np.load('catalogs_output/VolLim_20to80deg_Dmax200_rank0.npy')
+    MHI = catalog[0]
+    lg_MHI = np.log10(MHI)
+    Vrot = catalog[1]
+    incl=catalog[2]
+    W50 = catalog[3]
+    D = catalog[6]
+    z = catalog[8]
+
+    mask = (lg_MHI < 10) & (lg_MHI > 9)
+    cvals=[0,0,0,1,2,4]
+    b1vals=[1,5,1,2,5,4]
+    b2vals=[1,5,2,4,5,1]
+    avals=[1,1,1,1,1,1]
+    nvals = [1,1,1,2,4,3]
+    wvals = [4,3,2,1,1,4]
+    xevals=[0,0,-0.1,0.1,0]
+    xpvals=[0.1,0,0.1,-0.1,0]
+    linestyles=['-', '--', '-.', ':', '-', '--']
+    
+    color = cm.get_cmap('Dark2', len(cvals)).colors
+    # font = {'weight' : 'normal',
+    #     'size'   : 12}
+
+    # mpl.rc('font', **font)
+    #color = cm.get_cmap('viridis', len(cvals)+1).colors
+    #color = cm.Blues_r(np.linspace(0, 1, len(cvals)+3))
+    #color = cmc.vanimo(np.linspace(0, 1, len(cvals)))
+    SNRs = []
+    for i in range(len(cvals)):
+        Vel, S_flux = spec.Generate_Spectra(size=1, MHI=np.asarray([MHI[mask][0]]), 
                                                                 W50=np.asarray([W50[mask][0]]), 
                                                                 D_C=np.asarray([D[mask]][0]), 
                                                                 z=np.asarray([z[mask][0]]), 
@@ -148,26 +234,25 @@ def BusyShapes_PaperPlot():
                                                                 xp=[0],
                                                                 n=[nvals[i]], 
                                                                 w=1,
+                                                                RMS=[0.3],
                                                                 thermal_broaden=True)
         Vel, S_flux = center_profile(Vel, S_flux)
         plt.plot(Vel, S_flux, label=f'c={cvals[i]}, b$_{{1}}$={b1vals[i]}, b$_{{2}}$={b2vals[i]}, n={nvals[i]}', color=color[i], linewidth=1.5, linestyle=linestyles[i])
-        print("Final M is ", np.log10(final_M))
-        SNRs.append(SNR[0])
-    SNR_var = np.std(SNRs) / np.mean(SNRs)
-    print("SNR variation is ", SNR_var*100)
     plt.legend(fontsize=10, loc='upper left')
-    plt.xlabel('Velocity (km/s)')
-    plt.ylabel('Flux Density (mJy)')
-    plt.xlim(-580,430)
+    plt.xlabel('$x$')
+    plt.ylabel('$B_{s}(x)$')
+    plt.xlim(-6.7,5)
+    #plt.xlim(-580,430)
     #plt.ylim(0,4)
-    plt.title(f'log$(M_{{\mathrm{{HI}}}}/M_{{\odot}})$ = {lg_MHI[mask][0]:.1f}, $W_{{50}}$ = {W50[mask][0]:.0f} km s$^{{-1}}$', fontsize=14)
+    #plt.title(f'log$(M_{{\mathrm{{HI}}}}/M_{{\odot}})$ = {lg_MHI[mask][0]:.1f}, $W_{{50}}$ = {W50[mask][0]:.0f} km s$^{{-1}}$', fontsize=14)
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig('Plots/Busy_shapes.pdf', )
+    plt.savefig('Plots/Busy_shapes_xUnits.pdf', )
     plt.show()
 
 
 BusyShapes_PaperPlot()
+#BusyShapes_xUnits()
 
 
 

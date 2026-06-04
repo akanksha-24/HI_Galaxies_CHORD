@@ -198,17 +198,20 @@ def SNRint(f, Sf, z, W50, MHI, D_C, RMS_mJy, obs_yr=5, prevSNR=None):
     W50_broad = W50_broadened(W50)
     Wf = gf.width_vel2freq(del_Vrest=W50_broadened(W50_broad))
 
-    chan_mask = Sf > RMS_mJy*1e-3
+    #chan_mask = Sf > RMS_mJy*1e-3
+    chan_mask = Sf > RMS_mJy*1e-8
     S_int = integrate_profile(f[chan_mask], Sf[chan_mask]) # in Jy*MHz
-    N_chans = np.sum(Sf > RMS_mJy*1e-3)
+    #N_chans = np.sum(Sf > RMS_mJy*1e-3)
+    N_chans = np.sum(Sf > 1e-8)
+    #print("N_chans is ", N_chans)
     if N_chans!=0:
         SNRint = S_int / (RMS_mJy*upchan_res*1e-9*np.sqrt(N_chans))
-        print("Spectra SNR", SNRint)
-        print("previous SNR", prevSNR)
+        #print("Spectra SNR", SNRint)
+        #print("previous SNR", prevSNR)
     else:
         SNRint=0
-        if (prevSNR is None)==0:
-            print("previous 0 SNR was ", prevSNR)
+        #if (prevSNR is None)==0:
+        #    print("previous 0 SNR was ", prevSNR)
     return SNRint
 
     #SNRint2 = gf.SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=183000)#=upchan_res)
@@ -234,7 +237,8 @@ def Generate_Spectra(size, MHI, W50, D_C, z, RMS, a=1, w=1, b1=None, b2=None, c=
     #W = VHI*2*np.sin(i) # W_50       
     x = np.linspace(-20, 20, 10000).astype(np.float32)  # unitless axes used in generalized busy function definition
 
-    D_L = (1+z)*D_C
+    #D_L1 = (1+z)*D_C
+    D_L = cosmo.luminosity_distance(z).to_value(u.Mpc)
 
     if b1==None: b1 = np.random.uniform(1, 5, size=size)
     if b2==None: b2 = np.random.uniform(1, 5, size=size)
@@ -248,6 +252,7 @@ def Generate_Spectra(size, MHI, W50, D_C, z, RMS, a=1, w=1, b1=None, b2=None, c=
         for i in np.arange(size):
             #print(i)
             B = Busy_general(x, a, b1[i], b2[i], xe[i], xp[i], c[i], w, n[i])
+            #V, S = assign_units(x, B, 1, D_L[i], z[i], MHI_desired=MHI[i])
             V, S = assign_units(x, B, W50[i], D_L[i], z[i], MHI_desired=MHI[i])
             f, Sf, Speak = assign_freqUnits(x, B, W50[i], D_L[i], z[i], MHI_desired=MHI[i])
             f_V = gf.convert_f(V, z[i])
@@ -266,6 +271,7 @@ def Generate_Spectra(size, MHI, W50, D_C, z, RMS, a=1, w=1, b1=None, b2=None, c=
                 plt.close(fig)
 
         end = time.time()
+    #return x, B
     #print(f"Runtime: {end - start:.3f} seconds")
     return SNR_int
     #return final_M, V, S, SNR_int#, freq

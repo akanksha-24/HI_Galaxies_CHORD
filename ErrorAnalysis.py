@@ -40,12 +40,15 @@ def Spectra_SNRint(catalog, RMS, prevSNR=None, plotSpectra=True):
     #     np.random.shuffle(catalog_T)
     #     catalog = np.transpose(catalog_T)
     #     print("final catalog shape is ", catalog.shape)
+    print("catalog shape is ", catalog.shape)
     MHI = catalog[0]
     W50 = catalog[3]
     D = catalog[6]
     z = catalog[8]
     dec = catalog[5]
-    SNR_int = Generate_Spectra(size=100, MHI=MHI, W50=W50, D_C=D, z=z, RMS=RMS, prevSNR=prevSNR, plotSpectra=plotSpectra)
+    SNR_int = Generate_Spectra(size=1, MHI=np.asarray(MHI), W50=np.asarray(W50), 
+                               D_C=np.asarray(D), z=np.asarray(z), RMS=np.asarray(RMS), prevSNR=np.asarray(prevSNR), plotSpectra=plotSpectra)
+    
     #SNR_int = Generate_Spectra(size=catalog.shape[1], MHI=MHI, W50=W50, D_C=D, z=z)
     return SNR_int
 
@@ -101,11 +104,25 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
         #print("RMS values are", RMS_mJy)
         _, RMS_mJy, _ = build_survey(switch_int=7, obs_years=obs_year, z=z, start=dec1, end=dec2)
         SNR = SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=upchan_res)
-        mask1 = SNR > 6
+        SNR_spectra = SNR.copy()
+        mask = (SNR > 6) & (SNR < 8)
+        print("number of detections to generate spectra", catalog[:,mask].shape[1])
         #np.save('detected_test.npy', catalog[:,mask])
-        SNR_spectra = Spectra_SNRint(catalog=catalog[:, mask1], RMS=RMS_mJy[mask1], prevSNR=SNR[mask1])
+        for i in range(SNR.shape[0]):
+            if (SNR[i] > 6) and SNR[i] < 8:
+                #print("prevSNR is ", SNR[i])
+                SNR_ = Generate_Spectra(size=1, MHI=np.asarray([MHI[i]]), W50=np.asarray([W50[i]]), 
+                               D_C=np.asarray([D[i]]), z=np.asarray([z[i]]), RMS=np.asarray([RMS_mJy[i]]),
+                                 prevSNR=np.asarray([SNR[i]]), plotSpectra=True)[0]
+                #SNR_ = Spectra_SNRint(catalog=catalog[:,i], RMS=RMS_mJy[i], prevSNR=SNR[i])
+                #print("factor difference", SNR[i]/SNR_)
+                if SNR_==0:
+                    print("0 SNR prev was ", SNR[i])
+                if SNR_ < 6:
+                    SNR_spectra[i] = SNR_
         mask = SNR_spectra > 6
-        Vmax = Vmax_corr(MHI[mask], z[mask], RMS_mJy[mask], W50_broad[mask], chan_width=upchan_res, sigma=sigma, solidang=solidang)
+        Vmax = Vmax_corr(MHI[mask], z[mask], RMS_mJy[mask], W50_broad[mask], 
+                         chan_width=upchan_res, sigma=sigma, solidang=solidang)
         counts_Vcorr, _ = np.histogram(np.log10(MHI[mask]), bins=bins, weights=1/Vmax)
         phi[i] = counts_Vcorr/binwidth
         counts, _ = np.histogram(np.log10(MHI[mask]), bins=bins)
@@ -113,8 +130,8 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
         z_Counts[i], _ = np.histogram(z[mask], bins=z_bins)
 
         if i % 10 == 0:
-            np.save(f'catalogs_output/phi_counts_checkpoint_{obs_year}yr_z{zmax}_{i}.npy', np.asarray([phi, Counts]))
-            np.save(f'catalogs_output/z_counts_checkpoint_{obs_year}yr_z{zmax}_{i}.npy', z_Counts)
+            np.save(f'catalogs_output/phi_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', np.asarray([phi, Counts]))
+            np.save(f'catalogs_output/z_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', z_Counts)
         #print("Counts is ", Counts[i])
         # plt.scatter(bin_centers, np.log10(phi[i]))
         # plt.savefig('Plots/trial1_phicounts.png')
@@ -133,6 +150,6 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
 if __name__ == "__main__":
 #    signal.signal(signal.SIGUSR1, handler)
     start = time.time()
-    MonteCarlo_HIMF(trials=1, zmax=1, zmin=0, dec1=20, dec2=80, obs_year=5, Spectra=True)
+    MonteCarlo_HIMF(trials=1, zmax=0.6, zmin=0.3, dec1=20, dec2=80, obs_year=5, Spectra=True)
     end = time.time()
     print("Runtime is ", end-start)

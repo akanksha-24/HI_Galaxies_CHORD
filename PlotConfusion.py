@@ -39,6 +39,8 @@ def plot_fracz_combined():
     #z_list_err = numpy.arange(z_step_err/2,1,z_step_err)
     Sint_runs = np.load('Sint_1000runs_allz.npy')[0:360,:]
     error = np.std(Sint_runs, axis=1)
+    error[error==0]=1
+    print("error is ", error)
 
     mpl.rcParams.update({
     'font.size': 14,
