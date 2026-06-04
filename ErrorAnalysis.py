@@ -105,22 +105,25 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
         _, RMS_mJy, _ = build_survey(switch_int=7, obs_years=obs_year, z=z, start=dec1, end=dec2)
         SNR = SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=upchan_res)
         SNR_spectra = SNR.copy()
+        mask = SNR > 6
+        print("number of detections without spectra", catalog[:,mask].shape[1])
         mask = (SNR > 6) & (SNR < 8)
         print("number of detections to generate spectra", catalog[:,mask].shape[1])
         #np.save('detected_test.npy', catalog[:,mask])
-        for i in range(SNR.shape[0]):
-            if (SNR[i] > 6) and SNR[i] < 8:
+        for j in range(SNR.shape[0]):
+            if (SNR[j] > 6) and SNR[j] < 8:
                 #print("prevSNR is ", SNR[i])
-                SNR_ = Generate_Spectra(size=1, MHI=np.asarray([MHI[i]]), W50=np.asarray([W50[i]]), 
-                               D_C=np.asarray([D[i]]), z=np.asarray([z[i]]), RMS=np.asarray([RMS_mJy[i]]),
-                                 prevSNR=np.asarray([SNR[i]]), plotSpectra=True)[0]
+                SNR_ = Generate_Spectra(size=1, MHI=np.asarray([MHI[j]]), W50=np.asarray([W50[j]]), 
+                               D_C=np.asarray([D[j]]), z=np.asarray([z[j]]), RMS=np.asarray([RMS_mJy[j]]),
+                                 prevSNR=np.asarray([SNR[j]]), plotSpectra=False)[0]
                 #SNR_ = Spectra_SNRint(catalog=catalog[:,i], RMS=RMS_mJy[i], prevSNR=SNR[i])
                 #print("factor difference", SNR[i]/SNR_)
                 if SNR_==0:
-                    print("0 SNR prev was ", SNR[i])
+                    print("0 SNR prev was ", SNR[j])
                 if SNR_ < 6:
-                    SNR_spectra[i] = SNR_
+                    SNR_spectra[j] = SNR_
         mask = SNR_spectra > 6
+        print("number of detections with spectra: ", catalog[:,mask].shape[1])
         Vmax = Vmax_corr(MHI[mask], z[mask], RMS_mJy[mask], W50_broad[mask], 
                          chan_width=upchan_res, sigma=sigma, solidang=solidang)
         counts_Vcorr, _ = np.histogram(np.log10(MHI[mask]), bins=bins, weights=1/Vmax)
@@ -128,6 +131,9 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
         counts, _ = np.histogram(np.log10(MHI[mask]), bins=bins)
         Counts[i] = counts
         z_Counts[i], _ = np.histogram(z[mask], bins=z_bins)
+
+        np.save(f'catalogs_output/1run_phi_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', np.asarray([phi, Counts]))
+        np.save(f'catalogs_output/1run_z_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', z_Counts)
 
         if i % 10 == 0:
             np.save(f'catalogs_output/phi_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', np.asarray([phi, Counts]))
@@ -150,6 +156,6 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
 if __name__ == "__main__":
 #    signal.signal(signal.SIGUSR1, handler)
     start = time.time()
-    MonteCarlo_HIMF(trials=1, zmax=0.6, zmin=0.3, dec1=20, dec2=80, obs_year=5, Spectra=True)
+    MonteCarlo_HIMF(trials=1, zmax=1, zmin=0, dec1=20, dec2=80, obs_year=5, Spectra=True)
     end = time.time()
     print("Runtime is ", end-start)

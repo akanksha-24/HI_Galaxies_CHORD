@@ -89,6 +89,7 @@ def assign_units(x, B, W50, D, z, MHI_desired, Vlim=50, thermal_broaden=True):
     # for very narrow spectra, pad 0's to be able to convolve with gaussian later
     if np.max(V) <= Vlim:
         dV = V[1] - V[0]
+        if dV < 1e-6: dV = 1e-6 # avoid divide by 0
         n_pad = int((Vlim - np.max(V)) / dV)  # extend array to -20 to 20 km/s
         left_pad  = V[0] - dV * np.arange(n_pad, 0, -1)
         right_pad = V[-1] + dV * np.arange(1, n_pad + 1)
@@ -266,8 +267,9 @@ def Generate_Spectra(size, MHI, W50, D_C, z, RMS, a=1, w=1, b1=None, b2=None, c=
                 plt.plot(f, Sf)
                 plt.xlabel('Frequency (MHz)')
                 plt.ylabel('Flux Density (Jy)')
-                plt.title(f'log(MHI)={np.log10(MHI[i]):.1f}, D={D_C[i]:.0f} Mpc, z={z[i]:.2f}, SNR={SNR:.0f}, Speak={Speak:.2f} Jy')
+                plt.title(f'log(MHI)={np.log10(MHI[i]):.1f}, D={D_C[i]:.0f} Mpc, z={z[i]:.2f}, SNR={SNR:.0f}, Speak={Speak*1000:.3f} mJy')
                 pdf_.savefig(fig)
+                plt.show()
                 plt.close(fig)
 
         end = time.time()
