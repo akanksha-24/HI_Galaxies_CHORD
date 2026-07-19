@@ -186,7 +186,7 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
             HIMF = schechter_fit_lg(MHI_grid, phi_s=phi_s, M_s=M_s, alpha=alpha)
             catalog = Gen_Catalog(zmax=zmax, dec1=dec1, dec2=dec2, zmin=zmin, save=False, 
                                 phi_s=phi_s, alpha=alpha, M_s=M_s, Fluxlim=True, obs_year=obs_year)
-            print("catalog shape is ", catalog.shape)
+            print("catalog shape is ", catalog.shape,flush=True)
             MHI = catalog[0]
             W50 = catalog[3]
             D = catalog[6]
@@ -196,12 +196,12 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
             _, RMS_mJy, _ = build_survey(switch_int=7, obs_years=obs_year, z=z, start=dec1, end=dec2)
             SNR = SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=upchan_res)
             mask = SNR > 6
-            print("number of detections without spectra", catalog[:,mask].shape[1])
+            print("number of detections without spectra", catalog[:,mask].shape[1],flush=True)
             mask = (SNR > 6) & (SNR < 8)
-            print("number of detections to generate spectra", catalog[:,mask].shape[1])
+            print("number of detections to generate spectra", catalog[:,mask].shape[1], flush=True)
             candidate_indices = np.where((SNR > 6) & (SNR < 8))[0]
             index_chunks = np.array_split(candidate_indices, size)
-            print("number of detections to generate spectra per rank", [len(chunk) for chunk in index_chunks])
+            print("number of detections to generate spectra per rank", [len(chunk) for chunk in index_chunks], flush=True)
 
         else:
             index_chunks = None
@@ -231,7 +231,7 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
             #SNR_ = Spectra_SNRint(catalog=catalog[:,i], RMS=RMS_mJy[i], prevSNR=SNR[i])
             #print("factor difference", SNR[i]/SNR_)
             if SNR_busy==0:
-                print("0 SNR prev was ", SNR[j])
+                print("0 SNR prev was ", SNR[j], flush=True)
             #if SNR_busy < 6:
             local_results.append((int(j), float(SNR_busy)))
 
@@ -245,7 +245,7 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
                     SNR_spectra[j] = SNR_busy
 
             mask = SNR_spectra > 6
-            print("number of detections with spectra: ", catalog[:,mask].shape[1])
+            print("number of detections with spectra: ", catalog[:,mask].shape[1], flush=True)
             Vmax = Vmax_corr(MHI[mask], z[mask], RMS_mJy[mask], W50_broad[mask], 
                             chan_width=upchan_res, sigma=sigma, solidang=solidang)
             counts_Vcorr, _ = np.histogram(np.log10(MHI[mask]), bins=bins, weights=1/Vmax)
@@ -266,7 +266,7 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
             plt.plot(np.log10(MHI_grid), HIMF_Jones2018(MHI=MHI_grid), color='blue')
             plt.scatter(bin_centers, phi[i])
             plt.yscale('log')
-            plt.show()
+            plt.savefig('Plots/HIMF_check.png')
         # 
         #plt.plot(np.log10(MHI_grid), np.log10(HIMF_Jones2018(MHI=MHI_grid)), label='HIMF - drawn from, Jones2018')
         # plt.savefig('Plots/trial1_counts_z.png')
@@ -283,4 +283,4 @@ if __name__ == "__main__":
     start = time.time()
     MonteCarlo_HIMF_parallel(trials=1, zmax=0.1, zmin=0, dec1=20, dec2=80, obs_year=5, Spectra=True)
     end = time.time()
-    print("Runtime is ", end-start)
+    print("Runtime is ", end-start, flush=True)
