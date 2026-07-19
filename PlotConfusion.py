@@ -8,6 +8,23 @@ z_step = 1000./300000.
 zstart=z_step/2
 z_list = numpy.arange(zstart,1,z_step)
 
+def compare_confusion_zwidths():
+    z_step = 500./300000.
+    zstart=z_step/2
+    z_list = numpy.arange(zstart,0.6,z_step)
+
+    fracz_Mdet = np.load("fracz_Mdet_z0p6_zstep500.npy")
+    fracz_M0p1 = np.load("fracz_M0p1_z0p6_zstep500.npy")
+    fracz_Mdet_z = np.load("fracz_Mdet_z0p6_zstep500_zwidths.npy")
+    fracz_M0p1_z = np.load("fracz_M0p1_z0p6_zstep500_zwidths.npy")
+
+    plt.figure()
+    plt.plot(z_list, fracz_Mdet, color='black')
+    plt.plot(z_list, fracz_Mdet_z, color='red', linestyle='--')
+    plt.plot(z_list, fracz_M0p1, color='blue')
+    plt.plot(z_list, fracz_M0p1_z, color='red', linestyle='--')
+    plt.show()
+
 def fracConfusion_z():
     z_step = 500./300000.
     zstart=z_step/2
@@ -24,17 +41,21 @@ def fracConfusion_z():
         D_beam = phys_size((beam/60.)*numpy.pi/180.,z_list[i])
         p_list[i], _ = P_blend(D,z_list[i],D_beam,N_rands = 100000,den=False,RFI=False)
 
-    np.save("fracz_Mdet_z0p6_zstep500.npy", p_list)
+    np.save("fracz_M0p1_z0p6_zstep500_zwidths.npy", p_list)
 
 def plot_fracz_combined():
     z_step = 500./300000.
     zstart=z_step/2
     z_list = numpy.arange(zstart,0.6,z_step)
-    fracz_Mdet = np.load("fracz_Mdet_z0p6_zstep500.npy")
-    fracz_M0p1 = np.load("fracz_M0p1_z0p6_zstep500.npy")
+    #fracz_Mdet = np.load("fracz_Mdet_z0p6_zstep500.npy")
+    #fracz_M0p1 = np.load("fracz_M0p1_z0p6_zstep500.npy")
+    #fracM_Mdet = np.load('fractionBlends_Detection_zwidths.npy')
+    #fracM_M0p1 = np.load('fractionBlends_10pDetection_zwidths.npy')
+    fracz_Mdet = np.load("fracz_Mdet_z0p6_zstep500_zwidths.npy")
+    fracz_M0p1 = np.load("fracz_M0p1_z0p6_zstep500_zwidths.npy")
     frac_Msum = np.load('../HI_stack_confusion/code/Fraction_MHI.npy')
-    fracM_Mdet = np.load('fractionBlends_Detection.npy')
-    fracM_M0p1 = np.load('fractionBlends_10pDetection.npy')
+    fracM_Mdet = np.load('fractionBlends_Detection_zwidths.npy')
+    fracM_M0p1 = np.load('fractionBlends_10pDetection_zwidths.npy')
     #z_step_err = 500./300000.
     #z_list_err = numpy.arange(z_step_err/2,1,z_step_err)
     Sint_runs = np.load('Sint_1000runs_allz.npy')[0:360,:]
@@ -200,10 +221,10 @@ def fracConfusion_MHI():
         pdf = himf / numpy.sum(himf)
         blended_list.append(numpy.random.choice(logMHI, size=int(N_list[i]*p_list[i]), p=pdf))
 
-    with open("MJ_allsources_MHI_5year_z0to1_M01p_True.pkl", "wb") as f:
+    with open("MJ_allsources_MHI_5year_z0to1_Mdet_True_zwidths.pkl", "wb") as f:
         pickle.dump(catalog_list, f)
 
-    with open("MJ_blendedsources_MHI_5year_z0to1_M01p_True.pkl", "wb") as f:
+    with open("MJ_blendedsources_MHI_5year_z0to1_Mdet_True_zwidths.pkl", "wb") as f:
         pickle.dump(blended_list, f)
 
 def plot_Confusion_MHI(MHI_catfile, MHI_blendfile):
@@ -262,14 +283,14 @@ def plot_Confusion_MHI(MHI_catfile, MHI_blendfile):
     plt.xlabel('log($M_{HI}/M_{\odot}$)')
     plt.ylabel('Fraction of detections in blends')
     plt.tight_layout()
-    plt.savefig('blends_MHI_z_Mdet_True.png')
+    plt.savefig('blends_MHI_z_Mdet_True_zwidths.png')
     plt.show()
-    np.save('fractionBlends_10pDetection.npy', fraction_blends)
+    np.save('fractionBlends_Detection_zwidths.npy', fraction_blends)
     
-
+#compare_confusion_zwidths()
 plot_fracz_combined()
 #fracConfusion_z()
 #detections_And0p1(det_file='fractionBlends_Detection.npy', tenpercent_file='fractionBlends_10pDetection.npy')
-#fracConfusion_MHI()
-#plot_Confusion_MHI(MHI_catfile='MJ_allsources_MHI_5year_z0to1_M01p_True.pkl', 
-#                    MHI_blendfile='MJ_blendedsources_MHI_5year_z0to1_M01p_True.pkl')
+# fracConfusion_MHI()
+# plot_Confusion_MHI(MHI_catfile='MJ_allsources_MHI_5year_z0to1_Mdet_True_zwidths.pkl', 
+#                    MHI_blendfile='MJ_blendedsources_MHI_5year_z0to1_Mdet_True_zwidths.pkl')

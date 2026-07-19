@@ -8,6 +8,7 @@ from Plotting import *
 import sys
 import signal
 from Generate_Spectra import *
+from mpi4py import MPI
 
 # exit_now = False
 
@@ -153,9 +154,133 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
     #arr = np.load('catalogs_output/phi_counts.npy')
     #print(arr.shape)
     
+def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, obs_year=5, Spectra=False):
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    upchan_res = width_vel2freq(del_Vrest=5)
+    solidang = solid_angle(dec1=dec1, dec2=dec2, ra1=0, ra2=360)
+    print("solidang is ", solidang)
+    bins = np.arange(4.9, 12.2, 0.2)
+    binwidth = (bins[1:])-(bins[:-1])
+    bin_centers = mid_bin(bins)
+
+    z_step = 0.008
+    z_bins = np.arange(-1*z_step/2, zmax+z_step, z_step)
+    
+    if rank == 0:
+        phi = np.zeros((trials, len(bins) - 1))
+        Counts = np.zeros((trials, len(bins) - 1))
+        z_Counts = np.zeros((trials, len(z_bins) - 1))
+    else:
+        phi = None
+        Counts = None
+        z_Counts = None
+
+    for i in np.arange(trials):
+        if rank==0:
+            print(i)
+
+            alpha, M_s, phi_s = choose_SchechParams()
+            HIMF = schechter_fit_lg(MHI_grid, phi_s=phi_s, M_s=M_s, alpha=alpha)
+            catalog = Gen_Catalog(zmax=zmax, dec1=dec1, dec2=dec2, zmin=zmin, save=False, 
+                                phi_s=phi_s, alpha=alpha, M_s=M_s, Fluxlim=True, obs_year=obs_year)
+            print("catalog shape is ", catalog.shape)
+            MHI = catalog[0]
+            W50 = catalog[3]
+            D = catalog[6]
+            z = catalog[8]
+            W50_broad = W50_broadened(W50)
+            dec = catalog[5]
+            _, RMS_mJy, _ = build_survey(switch_int=7, obs_years=obs_year, z=z, start=dec1, end=dec2)
+            SNR = SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=upchan_res)
+            mask = SNR > 6
+            print("number of detections without spectra", catalog[:,mask].shape[1])
+            mask = (SNR > 6) & (SNR < 8)
+            print("number of detections to generate spectra", catalog[:,mask].shape[1])
+            candidate_indices = np.where((SNR > 6) & (SNR < 8))[0]
+            index_chunks = np.array_split(candidate_indices, size)
+            print("number of detections to generate spectra per rank", [len(chunk) for chunk in index_chunks])
+
+        else:
+            index_chunks = None
+            catalog = None
+            MHI = None
+            W50 = None
+            dec = None
+            D = None
+            z = None
+            W50_broad = None
+            RMS_mJy = None
+            SNR = None
+
+        MHI = comm.bcast(MHI, root=0)
+        W50 = comm.bcast(W50, root=0)
+        D = comm.bcast(D, root=0)
+        z = comm.bcast(z, root=0)
+        RMS_mJy = comm.bcast(RMS_mJy, root=0)
+        SNR = comm.bcast(SNR, root=0)
+        local_indices = comm.scatter(index_chunks, root=0)
+        local_results = []
+
+        for j in local_indices:
+            SNR_busy = Generate_Spectra(size=1, MHI=np.asarray([MHI[j]]), W50=np.asarray([W50[j]]), 
+                            D_C=np.asarray([D[j]]), z=np.asarray([z[j]]), RMS=np.asarray([RMS_mJy[j]]),
+                                prevSNR=np.asarray([SNR[j]]), plotSpectra=False)[0]
+            #SNR_ = Spectra_SNRint(catalog=catalog[:,i], RMS=RMS_mJy[i], prevSNR=SNR[i])
+            #print("factor difference", SNR[i]/SNR_)
+            if SNR_busy==0:
+                print("0 SNR prev was ", SNR[j])
+            #if SNR_busy < 6:
+            local_results.append((int(j), float(SNR_busy)))
+
+        gathered_results = comm.gather(local_results, root=0)
+        if rank == 0:
+            SNR_spectra = SNR.copy()
+
+            for rank_results in gathered_results:
+                for j, SNR_busy in rank_results:
+                    #if SNR_busy < 6:
+                    SNR_spectra[j] = SNR_busy
+
+            mask = SNR_spectra > 6
+            print("number of detections with spectra: ", catalog[:,mask].shape[1])
+            Vmax = Vmax_corr(MHI[mask], z[mask], RMS_mJy[mask], W50_broad[mask], 
+                            chan_width=upchan_res, sigma=sigma, solidang=solidang)
+            counts_Vcorr, _ = np.histogram(np.log10(MHI[mask]), bins=bins, weights=1/Vmax)
+            phi[i] = counts_Vcorr/binwidth
+            counts, _ = np.histogram(np.log10(MHI[mask]), bins=bins)
+            Counts[i] = counts
+            z_Counts[i], _ = np.histogram(z[mask], bins=z_bins)
+
+            np.save(f'catalogs_output/1run_phi_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', np.asarray([phi, Counts]))
+            np.save(f'catalogs_output/1run_z_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', z_Counts)
+
+            if i % 10 == 0:
+                np.save(f'catalogs_output/phi_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', np.asarray([phi, Counts]))
+                np.save(f'catalogs_output/z_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', z_Counts)
+        #print("Counts is ", Counts[i])
+            plt.figure()
+            plt.plot(np.log10(MHI_grid), HIMF)
+            plt.plot(np.log10(MHI_grid), HIMF_Jones2018(MHI=MHI_grid), color='blue')
+            plt.scatter(bin_centers, phi[i])
+            plt.yscale('log')
+            plt.show()
+        # 
+        #plt.plot(np.log10(MHI_grid), np.log10(HIMF_Jones2018(MHI=MHI_grid)), label='HIMF - drawn from, Jones2018')
+        # plt.savefig('Plots/trial1_counts_z.png')
+        #recover_HIMF(catalog_fl='detected_test.npy', Vollim=False, RMS=RMS_mJy, sigma=6, bins=bins, figname='Plots/test_detections.png')
+    #plt.savefig('Plots/HIMF_trials3.png')
+    
+    #np.save('catalogs_output/phi_counts_z0p8_1yr_1000.npy', np.asarray([phi, Counts]))
+    #np.save('catalogs_output/counts_z0p8_1yr_1000.npy', z_Counts)
+    #arr = np.load('catalogs_output/phi_counts.npy')
+    #print(arr.shape)
+
 if __name__ == "__main__":
 #    signal.signal(signal.SIGUSR1, handler)
     start = time.time()
-    MonteCarlo_HIMF(trials=1, zmax=1, zmin=0, dec1=20, dec2=80, obs_year=5, Spectra=True)
+    MonteCarlo_HIMF_parallel(trials=1, zmax=0.1, zmin=0, dec1=20, dec2=80, obs_year=5, Spectra=True)
     end = time.time()
     print("Runtime is ", end-start)

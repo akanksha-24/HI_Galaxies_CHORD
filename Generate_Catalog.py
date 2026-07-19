@@ -298,8 +298,12 @@ def load_catalogParams(catalog_file):
     return MHI, Vrot, i, W_50, ra, dec, D, Vol, z 
 
 if __name__ == "__main__":
-    Gen_Catalog(zmax=0.0475, dec1=20, dec2=80, Fluxlim=False, obs_year=5,
-                flname='catalogs_output/VolLim_20to80deg_Dmax200_MHIlim.npy', dtype=np.float64)
+    Gen_Catalog(zmax=1, dec1=20, dec2=80, Fluxlim=True, obs_year=5,
+                flname='catalogs_output/FluxLim_20to80deg_zmax1_obsyear5.npy', dtype=np.float64)
+    Gen_Catalog(zmax=1, dec1=20, dec2=50, Fluxlim=True, obs_year=1,
+                flname='catalogs_output/FluxLim_20to50deg_zmax1_obsyear1.npy', dtype=np.float64)
+    # Gen_Catalog(zmax=0.0475, dec1=20, dec2=80, Fluxlim=False, obs_year=5,
+    #             flname='catalogs_output/VolLim_20to80deg_Dmax200_MHIlim.npy', dtype=np.float64)
     #LoadALFALFA()
     #Gen_Catalog(zmax=0.8, npt=100000, dec1=20, dec2=80, Fluxlim=False, flname='catalogs_output/VolLim_20to80deg_zmax0p8', dtype=np.float64)
     #Gen_Catalog(zmin=0.4, zmax=1, npt=10000, dec1=20, dec2=80, Fluxlim=False, MHImin=9, MHImax=12,

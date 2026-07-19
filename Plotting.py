@@ -14,12 +14,54 @@ from Gaussian_Estimate import *
 from CHORD_Sensitivity import *
 import matplotlib as mpl
 import matplotlib.patches as patches
+from matplotlib.patches import Patch
 import itertools
 
 upchan_res = gf.width_vel2freq(del_Vrest=5) # u.Hz
 
 #RMS_5yr = time2RMS(days=5*365/20, decl=np.deg2rad(45), nu=upchan_res*u.Hz).value
 #RMS_1yr = time2RMS(days=365/20, decl=np.deg2rad(45), nu=upchan_res*u.Hz).value
+
+def add_zmask(ax):
+    x0, x1 = 0.1, 0.3   
+    y0, y1 = ax.get_ylim()    
+    rect = patches.Rectangle((x0, y0), x1 - x0, y1 - y0, linewidth=1, facecolor='red', alpha=0.3)
+    ax.add_patch(rect)
+
+    legend_patch = patches.Patch(
+    facecolor='red',
+    alpha=0.3,
+    label='RFI'
+    )
+    return legend_patch
+
+def redshift_surveysBar():
+    fig, ax = plt.subplots(figsize=[6,4], dpi=300)
+
+    surveys = ('HIPASS', 'ALFALFA', 'FASHI', 'APERTIF', 'WALLABY',
+            'CHILES', 'DSA all-sky', 'MIGHTEE-HI', 'LADUMA', 'SKA1-mid',)
+
+    redshift = [0.04, 0.06, 0.1, 0.25, 0.26, 0.45, 0.5, 0.6, 1.5, 2]
+
+    color = ['green', 'green', 'orange', 'green', 'orange',
+            'green', 'purple', 'orange', 'orange', 'purple']
+
+    ax.barh(surveys, redshift, color=color, align='center')
+    ax.yaxis.set_inverted(True)
+    ax.set_xlabel('Redshift')
+    rfi_patch = add_zmask(ax)
+
+    legend_elements = [
+        Patch(facecolor='green', label='Completed'),
+        Patch(facecolor='orange', label='Ongoing'),
+        Patch(facecolor='purple', label='Planned'),
+        rfi_patch
+    ]
+
+    ax.legend(handles=legend_elements, title="Survey status")
+    
+    plt.tight_layout()
+    plt.savefig('Plots/surveys_redshift.png')
 
 def param_distributions(catalog, n_bins=20, flname=''):
     catalog = np.load(catalog)
@@ -1167,8 +1209,9 @@ def survey_scantime():
 #         plt.savefig(flname+'_'+extn[i]+'.png')
 
 if __name__ == "__main__":
+    redshift_surveysBar()
     #survey_scantime()
-    W50z_Plane_subplots_zD()
+    #W50z_Plane_subplots_zD()
     #W50z_Plane_oneplot()
     #check_Spectra()
     #W50z_Plane(nearby=True)

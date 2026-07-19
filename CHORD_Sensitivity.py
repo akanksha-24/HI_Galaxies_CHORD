@@ -120,6 +120,7 @@ def build_survey(obs_years, z, switch_int=7, beam_sep=2.5, start=20, end=80, bea
         timespent = np.sum(time_strip)
     #constant = np.cos(beam_centers)/time_strip
     #print(constant)
+    #print("timespent is ", time_strip)
     nu = width_vel2freq(5) * u.Hz
     #RMS = RMS_fromDays(days=time_strip, decl=beam_centers, nu=nu)
     #print("RMS is ", RMS) # in mJy
@@ -134,3 +135,5 @@ def build_survey(obs_years, z, switch_int=7, beam_sep=2.5, start=20, end=80, bea
 
 # noise_cuts(catalog_fl="catalogs_output/VolLim_20to60deg_Dmax500.npy", bandwidth=38, obs_length=5*u.year, nstrips=20,
 #             flname="catalogs_output/Sflux_VolLim_20to60deg_Dmax500.npy", figname='Plots/VolLim_20to60deg_Dmax200_counts.png')
+
+build_survey(obs_years=1, z=0, end=50)

@@ -237,7 +237,9 @@ def N_exp(D,z,m1_vals,w1_vals,D_beam,N_rands=1000,m_mintest=5.0, m_maxtest=12.0)
     
     # sum of the spectra widths
     w_tot = 10.**numpy.transpose(numpy.tile(w1_vals,(N_rands,1))) + 10.**w2_vals
-    
+    # modifying by w_tot = wtot*(1+z) for observed widths rather than at-rest widths (changed by Akanksha):
+    w_tot = (1+z)*w_tot
+
     if M_det:
         vals = numpy.sum(det_test_gen(m_vals,w2_vals,D,z)*HIMF(m_vals)*p_w_m(w2_vals,m_vals)*m_av_mod(w_tot/140.,D_beam,1.),axis=1)
     elif M_62:
@@ -342,10 +344,10 @@ PAF = False #This means only ASKAP PAFs, others may be set up differently
 
 #Only one can be set to True
 #Determine if blends are with other detections, all HI galaxies, galaxy above 0.1M*
-M_det = False
+M_det = True
 M_62 = False
 Ms_01 = False
-M_01 = True
+M_01 = False
 
 area = (4.*numpy.pi*numpy.pi/129600.)*13258.#CHORD  30940.#WALLABY  150.#DINGO  2800.#a.40  320.#PPS Strip 
 
