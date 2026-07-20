@@ -249,30 +249,33 @@ def Generate_Spectra(size, MHI, W50, D_C, z, RMS, a=1, w=1, b1=None, b2=None, c=
     if n==None: n = np.random.uniform(1, 4, size=size) # n=odd number results in negative values, n=4 is too broad
 
     SNR_int = []
-    with PdfPages(fname) as pdf_:
-        for i in np.arange(size):
-            #print(i)
-            B = Busy_general(x, a, b1[i], b2[i], xe[i], xp[i], c[i], w, n[i])
-            #V, S = assign_units(x, B, 1, D_L[i], z[i], MHI_desired=MHI[i])
-            V, S = assign_units(x, B, W50[i], D_L[i], z[i], MHI_desired=MHI[i])
-            f, Sf, Speak = assign_freqUnits(x, B, W50[i], D_L[i], z[i], MHI_desired=MHI[i])
-            f_V = gf.convert_f(V, z[i])
-            final_M = get_MHI_freq(f, Sf, z[i])
-            #print("Final  M is ", final_M)
-            SNR = SNRint(f, Sf, z[i], W50[i], MHI[i], D_C=D_C[i], RMS_mJy=RMS[i], prevSNR=prevSNR[i])
-            SNR_int.append(SNR)
-            if plotSpectra:
-                fig = plt.figure()
-                #plt.plot(f_V, S)
-                plt.plot(f, Sf)
-                plt.xlabel('Frequency (MHz)')
-                plt.ylabel('Flux Density (Jy)')
-                plt.title(f'log(MHI)={np.log10(MHI[i]):.1f}, D={D_C[i]:.0f} Mpc, z={z[i]:.2f}, SNR={SNR:.0f}, Speak={Speak*1000:.3f} mJy')
-                pdf_.savefig(fig)
-                plt.show()
-                plt.close(fig)
 
-        end = time.time()
+    pdf = PdfPages(fname) if plotSpectra else None
+    for i in np.arange(size):
+        #print(i)
+        B = Busy_general(x, a, b1[i], b2[i], xe[i], xp[i], c[i], w, n[i])
+        #V, S = assign_units(x, B, 1, D_L[i], z[i], MHI_desired=MHI[i])
+        #V, S = assign_units(x, B, W50[i], D_L[i], z[i], MHI_desired=MHI[i])
+        f, Sf, Speak = assign_freqUnits(x, B, W50[i], D_L[i], z[i], MHI_desired=MHI[i])
+        #f_V = gf.convert_f(V, z[i])
+        #final_M = get_MHI_freq(f, Sf, z[i])
+        #print("Final  M is ", final_M)
+        SNR = SNRint(f, Sf, z[i], W50[i], MHI[i], D_C=D_C[i], RMS_mJy=RMS[i], prevSNR=prevSNR[i])
+        SNR_int.append(SNR)
+        if plotSpectra:
+            fig = plt.figure()
+            #plt.plot(f_V, S)
+            plt.plot(f, Sf)
+            plt.xlabel('Frequency (MHz)')
+            plt.ylabel('Flux Density (Jy)')
+            plt.title(f'log(MHI)={np.log10(MHI[i]):.1f}, D={D_C[i]:.0f} Mpc, z={z[i]:.2f}, SNR={SNR:.0f}, Speak={Speak*1000:.3f} mJy')
+            pdf.savefig(fig)
+            #plt.show()
+            plt.close(fig)
+
+    #end = time.time()
+    if pdf is not None:
+        pdf.close()
     #return x, B
     #print(f"Runtime: {end - start:.3f} seconds")
     return SNR_int
@@ -296,5 +299,5 @@ def Save_Spectra(catalog_fl, size=None):
     #plt.scatter(MHI, MHI_res)
     #plt.show()
 
-if __name__ == "__main__":
-    Save_Spectra(catalog_fl='catalogs_output/VolLim_20to60deg_Dmax200_rank0.npy', size=None)
+#if __name__ == "__main__":
+#    Save_Spectra(catalog_fl='catalogs_output/VolLim_20to60deg_Dmax200_rank0.npy', size=None)
