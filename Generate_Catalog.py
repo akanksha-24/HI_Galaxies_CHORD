@@ -109,9 +109,10 @@ def Gen_Catalog(zmax, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
                     noise=1e-4, vel_width=10, MHIres=10000,
                     draw=True, fltype='npy', flname='catalog.npy',
                     savelarge=True, dtype=np.float32, SNRint=False, sigma_int=6, RMS=0.2, save=True,
-                    phi_s=gf.phi_s, M_s=gf.M_s, alpha=gf.alpha, obs_year=5, comm=None):
+                    phi_s=gf.phi_s, M_s=gf.M_s, alpha=gf.alpha, obs_year=5, comm=None, gather=True):
     
-    print("starting Job...")
+    if rank==0:
+        print("starting Job...")
     
     if comm is None:
         comm = MPI.COMM_SELF
@@ -132,16 +133,18 @@ def Gen_Catalog(zmax, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
     if rank == 0:
         print(f"max redshift is {zmax}")
     z, D, V, dV = gf.comoving_volume(zmin=zmin, zmax=zmax, zstep=z_step, solidang=solidang)
-    print("Max distance is ", np.max(D))
+    if rank==0:
+        print("Max distance is ", np.max(D))
 
     #Split work among ranks
     all_indices = np.arange(len(dV))
-    rank_indices = np.array_split(all_indices, size)[rank]
+    rank_indices = all_indices[rank::size]
 
     # Set up HIMF grid
     MHI = np.logspace(MHImin, MHImax, MHIres)
     n = gf.galaxy_density(MHI, phi_s=phi_s, M_s=M_s, alpha=alpha)
-    print("the number density is ", n)
+    if rank==0:
+        print("the number density is ", n)
 
     local_samples = []
     local_Narr = []
@@ -175,7 +178,8 @@ def Gen_Catalog(zmax, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
                                         solidang, dtype=dtype, SNRint=SNRint, sigma=sigma_int, RMS=RMS,
                                         phi_s=phi_s, M_s=M_s, alpha=alpha)
             local_samples.append(samples_)
-    print("Saving samples...")
+    if rank==0:
+        print("Saving samples...")
     if draw:
         rank_filename = f"{flname}_rank{rank}.npy"
         local_arrays = (np.vstack(local_samples) if len(local_samples) > 0 else np.empty((0,9), dtype=dtype)).T
@@ -183,15 +187,26 @@ def Gen_Catalog(zmax, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
         if save:
             np.save(rank_filename, local_arrays)
 
-    all_Narr = comm.gather(local_Narr, root=0)
+    local_number = sum(local_Narr)
+    global_number = comm.reduce(local_number, op=MPI.SUM, root=0)
+
+    if gather:
+        all_Narr = comm.gather(local_Narr, root=0)
+        if rank == 0:
+            N_arr = np.concatenate(all_Narr)
 
     end = time.time()
     if rank == 0:
-        print(f"[Rank 0] Total runtime: {end - start:.2f} sec")
-
-        N_arr = np.concatenate(all_Narr)
-        if draw:
-            return local_arrays
+        print(
+            f"Total generated sources: {global_number}",
+            flush=True,
+        )
+        print(
+            f"[Rank 0] Total runtime: {end - start:.2f} sec",
+            flush=True,
+        )
+    if draw:
+        return local_arrays
     
 def merge_rankfiles(flname, delete_rank_files=True, dtype=np.float32):
     files = glob.glob(f"{flname}_*")

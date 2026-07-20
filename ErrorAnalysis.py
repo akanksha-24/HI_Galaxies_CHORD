@@ -161,7 +161,7 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
 
     upchan_res = width_vel2freq(del_Vrest=5)
     solidang = solid_angle(dec1=dec1, dec2=dec2, ra1=0, ra2=360)
-    print("solidang is ", solidang)
+    #print("solidang is ", solidang)
     bins = np.arange(4.9, 12.2, 0.2)
     binwidth = (bins[1:])-(bins[:-1])
     bin_centers = mid_bin(bins)
@@ -178,81 +178,70 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
         Counts = None
         z_Counts = None
 
-    for i in np.arange(trials):
+    for i in np.arange(trials):   
         if rank==0:
-            print(i)
-
+            print(f"Trial {i}", flush=True)
             alpha, M_s, phi_s = choose_SchechParams()
-            HIMF = schechter_fit_lg(MHI_grid, phi_s=phi_s, M_s=M_s, alpha=alpha)
-            catalog = Gen_Catalog(zmax=zmax, dec1=dec1, dec2=dec2, zmin=zmin, save=False, 
-                                phi_s=phi_s, alpha=alpha, M_s=M_s, Fluxlim=True, obs_year=obs_year, comm=MPI.COMM_SELF)
-            print("catalog shape is ", catalog.shape,flush=True)
-            MHI = catalog[0]
-            W50 = catalog[3]
-            D = catalog[6]
-            z = catalog[8]
-            W50_broad = W50_broadened(W50)
-            dec = catalog[5]
-            _, RMS_mJy, _ = build_survey(switch_int=7, obs_years=obs_year, z=z, start=dec1, end=dec2)
-            SNR = SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=upchan_res)
-            mask = SNR > 6
-            print("number of detections without spectra", catalog[:,mask].shape[1],flush=True)
-            mask = (SNR > 6) & (SNR < 8)
-            print("number of detections to generate spectra", catalog[:,mask].shape[1], flush=True)
-            candidate_indices = np.where((SNR > 6) & (SNR < 8))[0]
-            index_chunks = np.array_split(candidate_indices, size)
-            print("number of detections to generate spectra per rank", [len(chunk) for chunk in index_chunks], flush=True)
-
         else:
-            index_chunks = None
-            catalog = None
-            MHI = None
-            W50 = None
-            dec = None
-            D = None
-            z = None
-            W50_broad = None
-            RMS_mJy = None
-            SNR = None
+            alpha = None
+            M_s = None
+            phi_s = None
 
-        MHI = comm.bcast(MHI, root=0)
-        W50 = comm.bcast(W50, root=0)
-        D = comm.bcast(D, root=0)
-        z = comm.bcast(z, root=0)
-        RMS_mJy = comm.bcast(RMS_mJy, root=0)
-        SNR = comm.bcast(SNR, root=0)
-        local_indices = comm.scatter(index_chunks, root=0)
-        local_results = []
+        alpha, M_s, phi_s = comm.bcast((alpha, M_s, phi_s),root=0)
 
-        for j in local_indices:
-            SNR_busy = Generate_Spectra(size=1, MHI=np.asarray([MHI[j]]), W50=np.asarray([W50[j]]), 
-                            D_C=np.asarray([D[j]]), z=np.asarray([z[j]]), RMS=np.asarray([RMS_mJy[j]]),
-                                prevSNR=np.asarray([SNR[j]]), plotSpectra=False)[0]
-            #SNR_ = Spectra_SNRint(catalog=catalog[:,i], RMS=RMS_mJy[i], prevSNR=SNR[i])
-            #print("factor difference", SNR[i]/SNR_)
-            if SNR_busy==0:
-                print("0 SNR prev was ", SNR[j], flush=True)
-            #if SNR_busy < 6:
-            local_results.append((int(j), float(SNR_busy)))
+        seed_sequence = np.random.SeedSequence([12345, int(i), rank])
+        rank_seed = seed_sequence.generate_state(1)[0]
+        np.random.seed(rank_seed)
 
-        gathered_results = comm.gather(local_results, root=0)
-        if rank == 0:
-            SNR_spectra = SNR.copy()
+        catalog = Gen_Catalog(zmax=zmax, dec1=dec1, dec2=dec2, zmin=zmin, save=False, 
+                            phi_s=phi_s, alpha=alpha, M_s=M_s, Fluxlim=True, obs_year=obs_year, 
+                            comm=comm, gather=False)
 
-            for rank_results in gathered_results:
-                for j, SNR_busy in rank_results:
-                    #if SNR_busy < 6:
-                    SNR_spectra[j] = SNR_busy
+        MHI = catalog[0]
+        W50 = catalog[3]
+        D = catalog[6]
+        z = catalog[8]
+        W50_broad = W50_broadened(W50)
+        dec = catalog[5]
+        _, RMS_mJy, _ = build_survey(switch_int=7, obs_years=obs_year, z=z, start=dec1, end=dec2)
+        SNR = SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=upchan_res)
+        #mask = SNR > 6
+        #print("number of detections without spectra", catalog[:,mask].shape[1],flush=True)
+        mask = (SNR > 6) & (SNR < 8)
+        print("number of detections to generate spectra", catalog[:,mask].shape[1], flush=True)
+        candidate_indices = np.where((SNR > 6) & (SNR < 8))[0]
+        SNR_spectra = SNR.copy()
 
-            mask = SNR_spectra > 6
-            print("number of detections with spectra: ", catalog[:,mask].shape[1], flush=True)
-            Vmax = Vmax_corr(MHI[mask], z[mask], RMS_mJy[mask], W50_broad[mask], 
-                            chan_width=upchan_res, sigma=sigma, solidang=solidang)
-            counts_Vcorr, _ = np.histogram(np.log10(MHI[mask]), bins=bins, weights=1/Vmax)
-            phi[i] = counts_Vcorr/binwidth
-            counts, _ = np.histogram(np.log10(MHI[mask]), bins=bins)
-            Counts[i] = counts
-            z_Counts[i], _ = np.histogram(z[mask], bins=z_bins)
+        if Spectra: 
+            for j in candidate_indices:
+                SNR_busy = Generate_Spectra(size=1, MHI=np.asarray([MHI[j]]), W50=np.asarray([W50[j]]), 
+                                D_C=np.asarray([D[j]]), z=np.asarray([z[j]]), RMS=np.asarray([RMS_mJy[j]]),
+                                    prevSNR=np.asarray([SNR[j]]), plotSpectra=False)[0]
+                #SNR_ = Spectra_SNRint(catalog=catalog[:,i], RMS=RMS_mJy[i], prevSNR=SNR[i])
+                #print("factor difference", SNR[i]/SNR_)
+                if SNR_busy==0:
+                    print("0 SNR prev was ", SNR[j], flush=True)
+
+                #if SNR_busy < 6:
+                SNR_spectra[j] = SNR_busy
+
+        mask = SNR_spectra > sigma
+        Vmax = Vmax_corr(MHI[mask], z[mask], RMS_mJy[mask], W50_broad[mask], 
+                        chan_width=upchan_res, sigma=sigma, solidang=solidang)
+        #counts_Vcorr, _ = np.histogram(np.log10(MHI[mask]), bins=bins, weights=1/Vmax)
+        #local_phi = counts_Vcorr/binwidth
+        local_phi, _ = np.histogram(np.log10(MHI[mask]), bins=bins, weights=1/Vmax)
+        local_Counts, _ = np.histogram(np.log10(MHI[mask]), bins=bins)
+        local_zCounts, _ = np.histogram(z[mask], bins=z_bins)
+
+        global_phi_sum = comm.reduce(local_phi,op=MPI.SUM,root=0)
+        global_counts = comm.reduce(local_Counts,op=MPI.SUM,root=0)
+        global_z_counts = comm.reduce(local_zCounts,op=MPI.SUM,root=0)
+
+        if rank==0:
+            phi[i] = global_phi_sum / binwidth
+            Counts[i] = global_counts
+            z_Counts[i] = global_z_counts
 
             np.save(f'catalogs_output/1run_phi_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', np.asarray([phi, Counts]))
             np.save(f'catalogs_output/1run_z_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', z_Counts)
@@ -262,12 +251,14 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
                 np.save(f'catalogs_output/z_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', z_Counts)
         #print("Counts is ", Counts[i])
             plt.figure()
+            HIMF = schechter_fit_lg(MHI_grid, phi_s=phi_s, M_s=M_s, alpha=alpha)
             plt.plot(np.log10(MHI_grid), HIMF)
             plt.plot(np.log10(MHI_grid), HIMF_Jones2018(MHI=MHI_grid), color='blue')
             plt.scatter(bin_centers, phi[i])
             plt.yscale('log')
             plt.savefig('Plots/HIMF_check.png')
-        # 
+            plt.close()
+            # 
         #plt.plot(np.log10(MHI_grid), np.log10(HIMF_Jones2018(MHI=MHI_grid)), label='HIMF - drawn from, Jones2018')
         # plt.savefig('Plots/trial1_counts_z.png')
         #recover_HIMF(catalog_fl='detected_test.npy', Vollim=False, RMS=RMS_mJy, sigma=6, bins=bins, figname='Plots/test_detections.png')
@@ -281,6 +272,6 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
 if __name__ == "__main__":
 #    signal.signal(signal.SIGUSR1, handler)
     start = time.time()
-    MonteCarlo_HIMF_parallel(trials=1, zmax=0.1, zmin=0, dec1=20, dec2=80, obs_year=5, Spectra=True)
+    MonteCarlo_HIMF_parallel(trials=1, zmax=0.01, zmin=0, dec1=20, dec2=80, obs_year=5, Spectra=True)
     end = time.time()
     print("Runtime is ", end-start, flush=True)
