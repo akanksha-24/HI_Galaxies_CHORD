@@ -8,7 +8,7 @@ from scipy import special
 from scipy.interpolate import UnivariateSpline
 from scipy.signal import fftconvolve
 import time
-from mpi4py import MPI
+#from mpi4py import MPI
 import numba as nb
 from math import erf
 import Galaxy_Functions as gf
@@ -17,9 +17,9 @@ from CHORD_Sensitivity import *
 from matplotlib.backends.backend_pdf import PdfPages
 
 # for parallelization 
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()  
-size_mpi = comm.Get_size()  
+# comm = MPI.COMM_WORLD
+# rank = comm.Get_rank()  
+# size_mpi = comm.Get_size()  
 
 upchan_res = gf.width_vel2freq(del_Vrest=5) # for 5 km/s wide channels
 # need to fix
