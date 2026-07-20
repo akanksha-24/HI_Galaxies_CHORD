@@ -111,15 +111,15 @@ def Gen_Catalog(zmax, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
                     savelarge=True, dtype=np.float32, SNRint=False, sigma_int=6, RMS=0.2, save=True,
                     phi_s=gf.phi_s, M_s=gf.M_s, alpha=gf.alpha, obs_year=5, comm=None, gather=True):
     
-    if rank==0:
-        print("starting Job...")
-    
     if comm is None:
         comm = MPI.COMM_SELF
     #comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
     start = time.time()
+
+    if rank==0:
+        print("starting Job...")
 
     z_step = 1e-4
     npt = zmax/z_step
