@@ -185,7 +185,7 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
             alpha, M_s, phi_s = choose_SchechParams()
             HIMF = schechter_fit_lg(MHI_grid, phi_s=phi_s, M_s=M_s, alpha=alpha)
             catalog = Gen_Catalog(zmax=zmax, dec1=dec1, dec2=dec2, zmin=zmin, save=False, 
-                                phi_s=phi_s, alpha=alpha, M_s=M_s, Fluxlim=True, obs_year=obs_year)
+                                phi_s=phi_s, alpha=alpha, M_s=M_s, Fluxlim=True, obs_year=obs_year, comm=MPI.COMM_SELF)
             print("catalog shape is ", catalog.shape,flush=True)
             MHI = catalog[0]
             W50 = catalog[3]

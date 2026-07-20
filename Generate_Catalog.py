@@ -109,11 +109,13 @@ def Gen_Catalog(zmax, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
                     noise=1e-4, vel_width=10, MHIres=10000,
                     draw=True, fltype='npy', flname='catalog.npy',
                     savelarge=True, dtype=np.float32, SNRint=False, sigma_int=6, RMS=0.2, save=True,
-                    phi_s=gf.phi_s, M_s=gf.M_s, alpha=gf.alpha, obs_year=5):
+                    phi_s=gf.phi_s, M_s=gf.M_s, alpha=gf.alpha, obs_year=5, comm=None):
     
     print("starting Job...")
     
-    comm = MPI.COMM_WORLD
+    if comm is None:
+        comm = MPI.COMM_SELF
+    #comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
     start = time.time()
