@@ -212,9 +212,9 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
         SNR = SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=upchan_res)
         #mask = SNR > 6
         #print("number of detections without spectra", catalog[:,mask].shape[1],flush=True)
-        mask = (SNR > 6) #& (SNR < 8)
+        mask = (SNR > 6) & (SNR < 12)
         print("number of detections to generate spectra", catalog[:,mask].shape[1], flush=True)
-        candidate_indices = np.where((SNR > 6))[0] #& (SNR < 8))[0]
+        candidate_indices = np.where((SNR > 6))[0] & (SNR < 12)[0]
         SNR_spectra = SNR.copy()
 
         if Spectra: 
