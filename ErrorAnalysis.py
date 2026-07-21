@@ -24,12 +24,14 @@ def choose_SchechParams(alpha_=-1.25, del_alpha=0.1, M_s_=10**9.94, del_M_s=10**
     phi_s = np.random.normal(loc=phi_s_, scale=del_phi_s, size=1)
     return alpha, M_s, phi_s
 
-def Vmax_corr(MHI, z, RMS_mJy, W50_broad, chan_width, sigma, solidang):
+def Vmax_corr(MHI, z, RMS_mJy, W50_broad, chan_width, sigma, solidang, spectra=False):
     D = cosmo.comoving_distance(z).to_value(u.Mpc)
     Dsurvey = np.max(D)
     Dmin = np.min(D)
-    Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=25)
-    #Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=W50_broad)
+    if spectra: 
+        Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=W50_broad*3.5)
+    else:
+        Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=W50_broad)
     Dmax_comov = Dmax / (1 + z)
     Dmax_comov = np.minimum(Dmax_comov, Dsurvey)
     Vmax = VolumeFromDist(Dmax_comov, solidang=solidang, Dmin=Dmin)
@@ -228,7 +230,7 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
 
         mask = SNR_spectra > sigma
         Vmax = Vmax_corr(MHI[mask], z[mask], RMS_mJy[mask], W50_broad[mask], 
-                        chan_width=upchan_res, sigma=sigma, solidang=solidang)
+                        chan_width=upchan_res, sigma=sigma, solidang=solidang, spectra=Spectra)
         #counts_Vcorr, _ = np.histogram(np.log10(MHI[mask]), bins=bins, weights=1/Vmax)
         #local_phi = counts_Vcorr/binwidth
         local_phi, _ = np.histogram(np.log10(MHI[mask]), bins=bins, weights=1/Vmax)

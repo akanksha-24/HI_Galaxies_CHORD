@@ -196,11 +196,16 @@ def convolve_spectrum(S, V, sigma=10):
 #     return fftconvolve(B, G[None, :], mode='same', axes=1)
 
 def SNRint(f, Sf, z, W50, MHI, D_C, RMS_mJy, obs_yr=5, prevSNR=None):
-    W50_broad = W50_broadened(W50)
-    Wf = gf.width_vel2freq(del_Vrest=W50_broadened(W50_broad))
+    #W50_broad = W50_broadened(W50)
+    #Wf = gf.width_vel2freq(del_Vrest=W50_broadened(W50_broad))
 
     #chan_mask = Sf > RMS_mJy*1e-3
     chan_mask = Sf > RMS_mJy*1e-8
+    # df = np.max(f[chan_mask]) - np.min(f[chan_mask])
+    # dV = gf.width_freq2vel(df)
+    # print("W50 broadened is ", W50_broad)
+    # print("the spectral width is ", dV)
+    # print("the ratio is ", dV/W50_broad)
     S_int = integrate_profile(f[chan_mask], Sf[chan_mask]) # in Jy*MHz
     #N_chans = np.sum(Sf > RMS_mJy*1e-3)
     N_chans = np.sum(Sf > 1e-8)
