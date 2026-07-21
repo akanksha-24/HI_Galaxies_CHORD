@@ -29,6 +29,8 @@ def Vmax_corr(MHI, z, RMS_mJy, W50_broad, chan_width, sigma, solidang, spectra=F
     Dsurvey = np.max(D)
     Dmin = np.min(D)
     if spectra:
+        #Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=W50_broad)
+        # for ones where spectra was 
         Dmax = D*np.sqrt(SNR/6) # SNR = S21/(Slim/6)
     else:
         Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=W50_broad)
@@ -210,9 +212,9 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
         SNR = SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=upchan_res)
         #mask = SNR > 6
         #print("number of detections without spectra", catalog[:,mask].shape[1],flush=True)
-        mask = (SNR > 6) & (SNR < 8)
+        mask = (SNR > 6) #& (SNR < 8)
         print("number of detections to generate spectra", catalog[:,mask].shape[1], flush=True)
-        candidate_indices = np.where((SNR > 6) & (SNR < 8))[0]
+        candidate_indices = np.where((SNR > 6))[0] #& (SNR < 8))[0]
         SNR_spectra = SNR.copy()
 
         if Spectra: 
@@ -249,8 +251,8 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
             #np.save(f'catalogs_output/1run_phi_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', np.asarray([phi, Counts]))
             #np.save(f'catalogs_output/1run_z_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', z_Counts)
 
-            #if i % 100 == 0:
-            if i==1000:
+            if i % 100 == 0:
+            #if i==1000:
                 np.save(f'catalogs_output/phi_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', np.asarray([phi, Counts]))
                 np.save(f'catalogs_output/z_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', z_Counts)
         #print("Counts is ", Counts[i])
@@ -278,6 +280,6 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
 if __name__ == "__main__":
 #    signal.signal(signal.SIGUSR1, handler)
     start = time.time()
-    MonteCarlo_HIMF_parallel(trials=1001, zmax=1, zmin=0, dec1=20, dec2=80, obs_year=5, Spectra=True)
+    MonteCarlo_HIMF_parallel(trials=501, zmax=0.2, zmin=0, dec1=20, dec2=50, obs_year=1, Spectra=True)
     end = time.time()
     print("Runtime is ", end-start, flush=True)

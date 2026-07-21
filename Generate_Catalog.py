@@ -155,7 +155,7 @@ def Gen_Catalog(zmax, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
             #MHImin_i = np.log10(gf.S_toMHI(F_lim, vel_width, D[i], unitless=True))
             _, RMS_, _ = build_survey(obs_years=obs_year, z=z[i], start=dec1, end=dec2)
             MHI_lim = gf.estimate_MHImax(z=z[i], sigma=6, RMS_chan=RMS_,  DeltaV=20, chan_width=gf.width_vel2freq(5))
-            MHImin_i = np.log10(MHI_lim) #- 0.5
+            MHImin_i = np.log10(MHI_lim)-0.5
             MHImin_i = max(5, MHImin_i)
             #print("MHImin is ", MHImin_i)
             MHI = np.logspace(MHImin_i, MHImax, MHIres)
