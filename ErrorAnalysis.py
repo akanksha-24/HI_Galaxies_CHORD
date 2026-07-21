@@ -24,12 +24,12 @@ def choose_SchechParams(alpha_=-1.25, del_alpha=0.1, M_s_=10**9.94, del_M_s=10**
     phi_s = np.random.normal(loc=phi_s_, scale=del_phi_s, size=1)
     return alpha, M_s, phi_s
 
-def Vmax_corr(MHI, z, RMS_mJy, W50_broad, chan_width, sigma, solidang, spectra=False):
+def Vmax_corr(MHI, z, RMS_mJy, W50_broad, chan_width, sigma, solidang, spectra=False, SNR=None):
     D = cosmo.comoving_distance(z).to_value(u.Mpc)
     Dsurvey = np.max(D)
     Dmin = np.min(D)
-    if spectra: 
-        Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=W50_broad*3.5)
+    if spectra:
+        Dmax = D*np.sqrt(SNR/6) # SNR = S21/(Slim/6)
     else:
         Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=W50_broad)
     Dmax_comov = Dmax / (1 + z)
@@ -229,7 +229,7 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
                 SNR_spectra[j] = SNR_busy
 
         mask = SNR_spectra > sigma
-        Vmax = Vmax_corr(MHI[mask], z[mask], RMS_mJy[mask], W50_broad[mask], 
+        Vmax = Vmax_corr(MHI[mask], z[mask], RMS_mJy[mask], W50_broad[mask], SNR=SNR_spectra[mask],
                         chan_width=upchan_res, sigma=sigma, solidang=solidang, spectra=Spectra)
         #counts_Vcorr, _ = np.histogram(np.log10(MHI[mask]), bins=bins, weights=1/Vmax)
         #local_phi = counts_Vcorr/binwidth
@@ -254,13 +254,15 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
                 np.save(f'catalogs_output/z_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', z_Counts)
         #print("Counts is ", Counts[i])
             plt.figure()
-            HIMF = schechter_fit_lg(MHI_grid, phi_s=phi_s, M_s=M_s, alpha=alpha)
-            plt.plot(np.log10(MHI_grid), HIMF)
-            plt.plot(np.log10(MHI_grid), HIMF_Jones2018(MHI=MHI_grid), color='blue')
+            grid = np.logspace(5,11,100000)
+            HIMF = schechter_fit_lg(grid, phi_s=phi_s, M_s=M_s, alpha=alpha)
+            plt.plot(np.log10(grid), HIMF)
+            plt.plot(np.log10(grid), HIMF_Jones2018(MHI=grid), color='blue')
             plt.scatter(bin_centers, phi[i])
             plt.yscale('log')
-            plt.savefig('Plots/HIMF_check.png')
-            plt.close()
+            plt.show()
+            #plt.savefig('Plots/HIMF_check.png')
+            #plt.close()
             # 
         #plt.plot(np.log10(MHI_grid), np.log10(HIMF_Jones2018(MHI=MHI_grid)), label='HIMF - drawn from, Jones2018')
         # plt.savefig('Plots/trial1_counts_z.png')
@@ -275,6 +277,6 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
 if __name__ == "__main__":
 #    signal.signal(signal.SIGUSR1, handler)
     start = time.time()
-    MonteCarlo_HIMF_parallel(trials=101, zmax=1, zmin=0, dec1=20, dec2=80, obs_year=5, Spectra=True)
+    MonteCarlo_HIMF_parallel(trials=1001, zmax=1, zmin=0, dec1=20, dec2=80, obs_year=5, Spectra=True)
     end = time.time()
     print("Runtime is ", end-start, flush=True)

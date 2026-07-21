@@ -201,12 +201,17 @@ def SNRint(f, Sf, z, W50, MHI, D_C, RMS_mJy, obs_yr=5, prevSNR=None):
 
     #chan_mask = Sf > RMS_mJy*1e-3
     chan_mask = Sf > RMS_mJy*1e-8
-    # df = np.max(f[chan_mask]) - np.min(f[chan_mask])
-    # dV = gf.width_freq2vel(df)
+    #chan_mask = Sf > 0 
+    #df = np.max(f[chan_mask]) - np.min(f[chan_mask])
+    #dV = gf.width_freq2vel(df)
+    #if np.log10(MHI) > 10: 
     # print("W50 broadened is ", W50_broad)
     # print("the spectral width is ", dV)
     # print("the ratio is ", dV/W50_broad)
+    # print("MHI is ", np.log10(MHI))
     S_int = integrate_profile(f[chan_mask], Sf[chan_mask]) # in Jy*MHz
+    #print("Sint from profile is (Jy*Hz)", S_int)
+    #print("Sint from MHI is (Jy*Hz)", get_S21_freq(f, MHI, z))
     #N_chans = np.sum(Sf > RMS_mJy*1e-3)
     N_chans = np.sum(Sf > 1e-8)
     #print("N_chans is ", N_chans)
