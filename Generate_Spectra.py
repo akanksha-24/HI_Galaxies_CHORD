@@ -213,7 +213,7 @@ def SNRint(f, Sf, z, W50, MHI, D_C, RMS_mJy, obs_yr=5, prevSNR=None):
     #print("Sint from profile is (Jy*Hz)", S_int)
     #print("Sint from MHI is (Jy*Hz)", get_S21_freq(f, MHI, z))
     #N_chans = np.sum(Sf > RMS_mJy*1e-3)
-    N_chans = np.sum(Sf > 0)
+    N_chans = np.sum(chan_mask)
     #print("N_chans is ", N_chans)
     if N_chans!=0:
         SNRint = S_int / (RMS_mJy*upchan_res*1e-9*np.sqrt(N_chans))
