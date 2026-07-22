@@ -213,7 +213,7 @@ def SNRint(f, Sf, z, W50, MHI, D_C, RMS_mJy, obs_yr=5, prevSNR=None):
     #print("Sint from profile is (Jy*Hz)", S_int)
     #print("Sint from MHI is (Jy*Hz)", get_S21_freq(f, MHI, z))
     #N_chans = np.sum(Sf > RMS_mJy*1e-3)
-    N_chans = np.sum(Sf > 1e-8)
+    N_chans = np.sum(Sf > 0)
     #print("N_chans is ", N_chans)
     if N_chans!=0:
         SNRint = S_int / (RMS_mJy*upchan_res*1e-9*np.sqrt(N_chans))
@@ -270,7 +270,7 @@ def Generate_Spectra(size, MHI, W50, D_C, z, RMS, a=1, w=1, b1=None, b2=None, c=
         #f_V = gf.convert_f(V, z[i])
         #final_M = get_MHI_freq(f, Sf, z[i])
         #print("Final  M is ", final_M)
-        
+
         SNR = SNRint(f, Sf, z[i], W50[i], MHI[i], D_C=D_C[i], RMS_mJy=RMS[i], prevSNR=prevSNR[i])
         SNR_int.append(SNR)
         if plotSpectra:
