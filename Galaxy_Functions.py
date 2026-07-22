@@ -207,6 +207,11 @@ def SNR_int(z, MHI, DeltaV, RMS_chan, chan_width=chan_width):
     D_L = cosmo.luminosity_distance(z).to_value(u.Mpc)
     C = 2.92*10**-4
     return C*(MHI/(RMS_chan*D_L**2))*np.sqrt((1+z)/(chan_width*DeltaV))
+
+def SNR_int_check(z, MHI, df, RMS_chan, chan_width):
+    D_L = cosmo.luminosity_distance(z).to_value(u.Mpc)
+    return (MHI/(49.7*RMS_chan*D_L**2))/np.sqrt(chan_width*df) 
+
     
 def estimate_DLmax(MHI, z, sigma, RMS_chan, DeltaV, chan_width=chan_width):
     C = 2.92*10**-4

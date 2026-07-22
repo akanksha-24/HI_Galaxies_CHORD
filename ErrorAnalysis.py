@@ -218,6 +218,9 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
         dec = catalog[5]
         _, RMS_mJy, _ = build_survey(switch_int=7, obs_years=obs_year, z=z, start=dec1, end=dec2)
         SNR = SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=upchan_res)
+        #print("SNR is ", SNR)
+        #SNR_check = SNR_int_check(z=z, MHI=MHI, df=gf.width_vel2freq(W50_broad, z), RMS_chan=RMS_mJy*1e-3, chan_width=upchan_res)
+        #print("SNR check is ", SNR_check)
         #mask = SNR > 6
         #print("number of detections without spectra", catalog[:,mask].shape[1],flush=True)
         mask = (SNR > 6) #& (SNR < 12)
@@ -237,6 +240,9 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
 
                 #if SNR_busy < 6:
                 SNR_spectra[j] = SNR_busy
+                # print("spectra SNR is ", SNR_spectra[j])
+                # print("previous SNR was", SNR[j])
+                # print("SNR ratio ", SNR[j]/SNR_spectra[j])
 
         mask = SNR_spectra > sigma
         Vmax = Vmax_corr(MHI[mask], z[mask], RMS_mJy[mask], W50_broad[mask], SNR=SNR_spectra[mask],
@@ -288,6 +294,6 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
 if __name__ == "__main__":
 #    signal.signal(signal.SIGUSR1, handler)
     start = time.time()
-    MonteCarlo_HIMF_parallel(trials=1001, zmax=1, zmin=0, dec1=20, dec2=50, obs_year=1, Spectra=True)
+    MonteCarlo_HIMF_parallel(trials=1001, zmin=0, zmax=1, dec1=20, dec2=50, obs_year=1, Spectra=True)
     end = time.time()
     print("Runtime is ", end-start, flush=True)

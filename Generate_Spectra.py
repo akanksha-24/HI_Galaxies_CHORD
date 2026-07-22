@@ -56,8 +56,9 @@ def get_MHI_freq(f, S, z):
     From Equation 45 of Meyer 2017'''
 
     D_L = gf.Luminosity_Dist(z) # in Mpc
-    int_S = integrate_profile(f, S) # in MHz*Jy
-    return 49.7 * (D_L**2) * int_S * 1e6 # in Hz*Jy
+    int_S = integrate_profile(f, S) # in Hz*Jy
+    #print("int_S", int_S)
+    return 49.7 * (D_L**2) * int_S #* 1e6 # in Hz*Jy
 
 
 # def find_FWHM(x, y, level=0.5):
@@ -107,16 +108,26 @@ def assign_units(x, B, W50, D, z, MHI_desired, Vlim=50, thermal_broaden=True):
 
     return V, S_broad     # Return V and S axes and W_ roots (for checking)
 
+# def assign_freqUnits(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5):
+#     V, S = assign_units(x, B, W50, D, z, MHI_desired, Vlim=50, thermal_broaden=True)
+#     f = gf.convert_f(V, z) * 1e6
+#     f = f[::-1]
+#     S = S[::-1]
+#     MHI_final = get_MHI_freq(f, S, z)
+#     print("MHI final is ", np.log10(MHI_final))
+#     print("MHI desired is ", np.log10(MHI_desired))
+#     return f, S
+
 def assign_freqUnits(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5):
     W50broad = W50_broadened(W50)
-    W_freq = gf.width_vel2freq(del_Vrest=W50, z=z) # in Hz
+    W_freq = gf.width_vel2freq(del_Vrest=W50broad, z=z) # in Hz
+    #print("Wf expected is ", gf.width_vel2freq(del_Vrest=W50broad, z=z))
 
     if coarseRes:
         chan_res = gf.chan_width # in Hz
     else:
         chan_res = upchan_res
-        #print("chan res in Hz", chan_res)
-
+        
     if np.log10(MHI_desired) < 7: 
         max_Wf = gf.width_vel2freq(del_Vrest=200)
     elif (np.log10(MHI_desired) > 7) and (np.log10(MHI_desired) < 10):
@@ -124,7 +135,6 @@ def assign_freqUnits(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5):
     else:
         max_Wf = gf.width_vel2freq(del_Vrest=2500)
     Nchans = np.max(max_Wf/chan_res)
-    chan_res = chan_res 
     freq_axis = np.arange(-Nchans*chan_res/2, Nchans*chan_res/2+1, chan_res)
 
     # scale x-axis width by frequency width
@@ -133,9 +143,9 @@ def assign_freqUnits(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5):
     scale = W_freq / FWHM                 # scaling factor from unitless → km/s    
     f_highres = x * scale                   # velocity axis in km/s
 
-    # convert to MHz to integration
-    f_highres = f_highres / 1e6
-    freq_axis = freq_axis / 1e6
+    # convert to MHz for integration
+    f_highres = f_highres #/ 1e6 # in Jy
+    freq_axis = freq_axis #/ 1e6 # in Jy
     S_resamp = np.interp(x=freq_axis, xp=f_highres, fp=S_norm)
 
     # Scale y-axis
@@ -143,19 +153,22 @@ def assign_freqUnits(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5):
     y_scale = MHI_desired / MHI_initial   
     S_freq = S_resamp * y_scale 
     
-    freq_obs = gf.get_fobs(z) # in MHz
+    freq_obs = gf.get_fobs(z) * 1e6 # in Hz
 
-    sigma_f = gf.width_vel2freq(del_Vrest=10) / 1e6 # in MHz
-    Sf_convolve = convolve_spectrum(S_freq, freq_axis, sigma=sigma_f)
-    MHI_final = get_MHI_freq(freq_axis, Sf_convolve, z)
+    Sf_convolve = S_freq
+    #sigma_f = gf.width_vel2freq(del_Vrest=10, z=z) # in Hz
+    #Sf_convolve = convolve_spectrum(S_freq, freq_axis, sigma=sigma_f)
+    #df, _ = find_FWHM(freq_axis, Sf_convolve)
+    #print("Wf actual is", df)
+    #MHI_final = get_MHI_freq(freq_axis, Sf_convolve, z)
 
     #print("intial mass is ", MHI_initial)
-    #print("desired mass is ", MHI_desired) 
-    #print("final mass is ", MHI_final)
+    #print("desired mass is ", np.log10(MHI_desired))
+    #print("final mass is ", np.log10(MHI_final))
 
     S_int, _ = gf.int_S21(MHI=MHI_desired, z=z)
     #print("S peak in Jy from velocity", S_int/W50broad)
-    Sf_int, _ = gf.int_S21Hz(MHI=MHI_desired, z=z) 
+    #Sf_int, _ = gf.int_S21Hz(MHI=MHI_desired, z=z) 
     #print("S peak in Jy from freq", Sf_int/gf.width_vel2freq(W50broad, z=z)) 
 
     freq_final = freq_axis + freq_obs
@@ -196,33 +209,47 @@ def convolve_spectrum(S, V, sigma=10):
 #     return fftconvolve(B, G[None, :], mode='same', axes=1)
 
 def SNRint(f, Sf, z, W50, MHI, D_C, RMS_mJy, obs_yr=5, prevSNR=None):
-    #W50_broad = W50_broadened(W50)
-    #Wf = gf.width_vel2freq(del_Vrest=W50_broadened(W50_broad))
+    W50_broad = W50_broadened(W50)
+    Wf = gf.width_vel2freq(del_Vrest=W50_broadened(W50_broad), z=z)
 
     #chan_mask = Sf > RMS_mJy*1e-3
     #chan_mask = Sf > RMS_mJy*1e-8
     chan_mask = Sf > 0 
-    #df = np.max(f[chan_mask]) - np.min(f[chan_mask])
-    #dV = gf.width_freq2vel(df)
+    S50_mask = Sf > 0.5*np.max(Sf)
+
     #if np.log10(MHI) > 10: 
-    # print("W50 broadened is ", W50_broad)
-    # print("the spectral width is ", dV)
+    #print("W50 broadened is ", W50_broad)
+    #print("W50_f in frequency expected is ", Wf)
+    #df = np.max(f[chan_mask]) - np.min(f[chan_mask])
+    #print("W50_f in frequency actual is ", df)
     # print("the ratio is ", dV/W50_broad)
     # print("MHI is ", np.log10(MHI))
-    S_int = integrate_profile(f[chan_mask], Sf[chan_mask]) # in Jy*MHz
+    S_int = integrate_profile(f[chan_mask], Sf[chan_mask]) # in Jy*Hz
+    #print("integrated spectrum Sint", S_int)
+    DL = gf.Luminosity_Dist(z)
+    #print("expected Sint", MHI/(49.7*DL**2))
     #print("Sint from profile is (Jy*Hz)", S_int)
     #print("Sint from MHI is (Jy*Hz)", get_S21_freq(f, MHI, z))
     #N_chans = np.sum(Sf > RMS_mJy*1e-3)
     N_chans = np.sum(chan_mask)
     #print("N_chans is ", N_chans)
     if N_chans!=0:
-        SNRint = S_int / (RMS_mJy*upchan_res*1e-9*np.sqrt(N_chans))
+        SNRint = S_int / (RMS_mJy*upchan_res*1e-3*np.sqrt(N_chans))
+        #print(f"RMS is {RMS_mJy} mJy at redshift z={z}")
         #print("Spectra SNR", SNRint)
         #print("previous SNR", prevSNR)
     else:
         SNRint=0
         #if (prevSNR is None)==0:
         #    print("previous 0 SNR was ", prevSNR)
+    # if Wf/df < 1:
+    #     print("width ratio is ", Wf/df)
+    #     print("SNR ratio is ", prevSNR/SNRint)
+    # else:
+    #     print("ELSE SNR ratio is ", prevSNR/SNRint)
+    #print("SNRint is ", SNRint)
+    #SNRint_check = gf.SNR_int_check(z=z, MHI=MHI, df=df, RMS_chan=RMS_mJy*1e-3, chan_width=upchan_res)
+    #print("SNRint_check is ", SNRint_check)
     return SNRint
 
     #SNRint2 = gf.SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=183000)#=upchan_res)
@@ -267,22 +294,25 @@ def Generate_Spectra(size, MHI, W50, D_C, z, RMS, a=1, w=1, b1=None, b2=None, c=
         #V, S = assign_units(x, B, 1, D_L[i], z[i], MHI_desired=MHI[i])
         #V, S = assign_units(x, B, W50[i], D_L[i], z[i], MHI_desired=MHI[i])
         f, Sf, Speak = assign_freqUnits(x, B, W50[i], D_L[i], z[i], MHI_desired=MHI[i])
-        #f_V = gf.convert_f(V, z[i])
+        #f_V = gf.convert_f(V, z[i]) * 1e6 # in Jy
         #final_M = get_MHI_freq(f, Sf, z[i])
         #print("Final  M is ", final_M)
 
         SNR = SNRint(f, Sf, z[i], W50[i], MHI[i], D_C=D_C[i], RMS_mJy=RMS[i], prevSNR=prevSNR[i])
+        #print("SNR is in freq units is ", SNR)
+        #SNR = SNRint(f_V[::-1], S[::-1], z[i], W50[i], MHI[i], D_C=D_C[i], RMS_mJy=RMS[i], prevSNR=prevSNR[i])
+        #print("SNR from Velocity conversion is ", SNR)
         SNR_int.append(SNR)
         if plotSpectra:
             fig = plt.figure()
-            #plt.plot(f_V, S)
+            plt.plot(f_V, S)
             plt.plot(f, Sf)
             plt.xlabel('Frequency (MHz)')
             plt.ylabel('Flux Density (Jy)')
             plt.title(f'log(MHI)={np.log10(MHI[i]):.1f}, D={D_C[i]:.0f} Mpc, z={z[i]:.2f}, SNR={SNR:.0f}, Speak={Speak*1000:.3f} mJy')
             pdf.savefig(fig)
-            #plt.show()
-            plt.close(fig)
+            plt.show()
+            #plt.close(fig)
 
     #end = time.time()
     if pdf is not None:
