@@ -38,10 +38,11 @@ def Vmax_corr(MHI, z, RMS_mJy, W50_broad, chan_width, sigma, solidang, spectra=F
         #Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=W50_broad)
         # for ones where spectra was 
     Dmax_comov = D*np.sqrt(SNR/6) # SNR = S21/(Slim/6)
+    #Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=W50_broad)
+    #Dmax_comov = Dmax / (1 + z)
     #else:
     #Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=W50_broad)
     #Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=24)
-    #Dmax_comov = Dmax / (1 + z)
     Dmax_comov = np.minimum(Dmax_comov, Dsurvey)
     Vmax = VolumeFromDist(Dmax_comov, solidang=solidang, Dmin=Dmin)
     return Vmax
@@ -220,11 +221,11 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
         #mask = SNR > 6
         #print("number of detections without spectra", catalog[:,mask].shape[1],flush=True)
         mask = (SNR > 6) #& (SNR < 12)
-        print("number of detections to generate spectra", catalog[:,mask].shape[1], flush=True)
-        candidate_indices = np.where((SNR > 6))[0] #& (SNR < 12))[0]
+        candidate_indices = np.where(SNR > 6)[0] #& (SNR < 12))[0]
         SNR_spectra = SNR.copy()
 
         if Spectra: 
+            print("number of detections to generate spectra", catalog[:,mask].shape[1], flush=True)
             for j in candidate_indices:
                 SNR_busy = Generate_Spectra(size=1, MHI=np.asarray([MHI[j]]), W50=np.asarray([W50[j]]), 
                                 D_C=np.asarray([D[j]]), z=np.asarray([z[j]]), RMS=np.asarray([RMS_mJy[j]]),
@@ -270,8 +271,8 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
             plt.plot(np.log10(grid), HIMF_Jones2018(MHI=grid), color='black')
             plt.scatter(bin_centers, phi[i])
             plt.yscale('log')
-            plt.show()
-            #plt.savefig('Plots/HIMF_check.png')
+            #plt.show()
+            plt.savefig('Plots/HIMF_check.png')
             #plt.close()
             # 
         #plt.plot(np.log10(MHI_grid), np.log10(HIMF_Jones2018(MHI=MHI_grid)), label='HIMF - drawn from, Jones2018')
@@ -287,6 +288,6 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
 if __name__ == "__main__":
 #    signal.signal(signal.SIGUSR1, handler)
     start = time.time()
-    MonteCarlo_HIMF_parallel(trials=1, zmax=1, zmin=0, dec1=20, dec2=80, obs_year=5, Spectra=True)
+    MonteCarlo_HIMF_parallel(trials=1, zmax=1, zmin=0, dec1=20, dec2=80, obs_year=5, Spectra=False)
     end = time.time()
     print("Runtime is ", end-start, flush=True)
