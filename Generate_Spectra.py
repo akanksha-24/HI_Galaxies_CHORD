@@ -200,8 +200,8 @@ def SNRint(f, Sf, z, W50, MHI, D_C, RMS_mJy, obs_yr=5, prevSNR=None):
     #Wf = gf.width_vel2freq(del_Vrest=W50_broadened(W50_broad))
 
     #chan_mask = Sf > RMS_mJy*1e-3
-    chan_mask = Sf > RMS_mJy*1e-8
-    #chan_mask = Sf > 0 
+    #chan_mask = Sf > RMS_mJy*1e-8
+    chan_mask = Sf > 0 
     #df = np.max(f[chan_mask]) - np.min(f[chan_mask])
     #dV = gf.width_freq2vel(df)
     #if np.log10(MHI) > 10: 
@@ -270,6 +270,7 @@ def Generate_Spectra(size, MHI, W50, D_C, z, RMS, a=1, w=1, b1=None, b2=None, c=
         #f_V = gf.convert_f(V, z[i])
         #final_M = get_MHI_freq(f, Sf, z[i])
         #print("Final  M is ", final_M)
+        
         SNR = SNRint(f, Sf, z[i], W50[i], MHI[i], D_C=D_C[i], RMS_mJy=RMS[i], prevSNR=prevSNR[i])
         SNR_int.append(SNR)
         if plotSpectra:
