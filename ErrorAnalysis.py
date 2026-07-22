@@ -24,18 +24,24 @@ def choose_SchechParams(alpha_=-1.25, del_alpha=0.1, M_s_=10**9.94, del_M_s=10**
     phi_s = np.random.normal(loc=phi_s_, scale=del_phi_s, size=1)
     return alpha, M_s, phi_s
 
-def Vmax_corr(MHI, z, RMS_mJy, W50_broad, chan_width, sigma, solidang, spectra=False, SNR=None):
+def Vmax_corr(MHI, z, RMS_mJy, W50_broad, chan_width, sigma, solidang, spectra=False, SNR=None, zsurvey=None, zmin=None):
     D = cosmo.comoving_distance(z).to_value(u.Mpc)
-    Dsurvey = np.max(D)
-    Dmin = np.min(D)
+    if zsurvey is None:
+        Dsurvey = np.max(D)
+    else:
+        Dsurvey = cosmo.comoving_distance(zsurvey).to_value(u.Mpc)
+    if zmin is None:
+        Dmin = np.min(D)
+    else:
+        Dmin = cosmo.comoving_distance(zmin).to_value(u.Mpc)
     #if spectra:
         #Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=W50_broad)
         # for ones where spectra was 
-    Dmax = D*np.sqrt(SNR/6) # SNR = S21/(Slim/6)
+    Dmax_comov = D*np.sqrt(SNR/6) # SNR = S21/(Slim/6)
     #else:
     #Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=W50_broad)
     #Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=24)
-    Dmax_comov = Dmax / (1 + z)
+    #Dmax_comov = Dmax / (1 + z)
     Dmax_comov = np.minimum(Dmax_comov, Dsurvey)
     Vmax = VolumeFromDist(Dmax_comov, solidang=solidang, Dmin=Dmin)
     return Vmax
@@ -233,7 +239,7 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
 
         mask = SNR_spectra > sigma
         Vmax = Vmax_corr(MHI[mask], z[mask], RMS_mJy[mask], W50_broad[mask], SNR=SNR_spectra[mask],
-                        chan_width=upchan_res, sigma=sigma, solidang=solidang, spectra=Spectra)
+                        chan_width=upchan_res, sigma=sigma, solidang=solidang, spectra=Spectra, zsurvey=zmax, zmin=zmin)
         #counts_Vcorr, _ = np.histogram(np.log10(MHI[mask]), bins=bins, weights=1/Vmax)
         #local_phi = counts_Vcorr/binwidth
         local_phi, _ = np.histogram(np.log10(MHI[mask]), bins=bins, weights=1/Vmax)
@@ -254,17 +260,17 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
 
             if i % 100 == 0:
             #if i==1000:
-                np.save(f'catalogs_output/phi_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', np.asarray([phi, Counts]))
-                np.save(f'catalogs_output/z_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', z_Counts)
+                np.save(f'catalogs_output/NEW_phi_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', np.asarray([phi, Counts]))
+                np.save(f'catalogs_output/NEW_z_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', z_Counts)
         #print("Counts is ", Counts[i])
-            # plt.figure()
-            # grid = np.logspace(5,11,100000)
-            # HIMF = schechter_fit_lg(grid, phi_s=phi_s, M_s=M_s, alpha=alpha)
-            # plt.plot(np.log10(grid), HIMF)
-            # plt.plot(np.log10(grid), HIMF_Jones2018(MHI=grid), color='black')
-            # plt.scatter(bin_centers, phi[i])
-            # plt.yscale('log')
-            # plt.show()
+            plt.figure()
+            grid = np.logspace(5,11,100000)
+            HIMF = schechter_fit_lg(grid, phi_s=phi_s, M_s=M_s, alpha=alpha)
+            plt.plot(np.log10(grid), HIMF)
+            plt.plot(np.log10(grid), HIMF_Jones2018(MHI=grid), color='black')
+            plt.scatter(bin_centers, phi[i])
+            plt.yscale('log')
+            plt.show()
             #plt.savefig('Plots/HIMF_check.png')
             #plt.close()
             # 
@@ -281,6 +287,6 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
 if __name__ == "__main__":
 #    signal.signal(signal.SIGUSR1, handler)
     start = time.time()
-    MonteCarlo_HIMF_parallel(trials=1001, zmax=1, zmin=0, dec1=20, dec2=50, obs_year=1, Spectra=True)
+    MonteCarlo_HIMF_parallel(trials=1, zmax=1, zmin=0, dec1=20, dec2=80, obs_year=5, Spectra=True)
     end = time.time()
     print("Runtime is ", end-start, flush=True)
