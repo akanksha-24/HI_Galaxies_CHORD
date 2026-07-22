@@ -31,9 +31,10 @@ def Vmax_corr(MHI, z, RMS_mJy, W50_broad, chan_width, sigma, solidang, spectra=F
     #if spectra:
         #Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=W50_broad)
         # for ones where spectra was 
-    #    Dmax = D*np.sqrt(SNR/6) # SNR = S21/(Slim/6)
+    Dmax = D*np.sqrt(SNR/6) # SNR = S21/(Slim/6)
     #else:
-    Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=24)
+    #Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=W50_broad)
+    #Dmax = estimate_DLmax(MHI, z, sigma=sigma, RMS_chan=RMS_mJy, chan_width=chan_width, DeltaV=24)
     Dmax_comov = Dmax / (1 + z)
     Dmax_comov = np.minimum(Dmax_comov, Dsurvey)
     Vmax = VolumeFromDist(Dmax_comov, solidang=solidang, Dmin=Dmin)
@@ -256,14 +257,14 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
                 np.save(f'catalogs_output/phi_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', np.asarray([phi, Counts]))
                 np.save(f'catalogs_output/z_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', z_Counts)
         #print("Counts is ", Counts[i])
-            # plt.figure()
-            # grid = np.logspace(5,11,100000)
-            # HIMF = schechter_fit_lg(grid, phi_s=phi_s, M_s=M_s, alpha=alpha)
-            # plt.plot(np.log10(grid), HIMF)
-            # plt.plot(np.log10(grid), HIMF_Jones2018(MHI=grid), color='blue')
-            # plt.scatter(bin_centers, phi[i])
-            # plt.yscale('log')
-            # plt.show()
+            plt.figure()
+            grid = np.logspace(5,11,100000)
+            HIMF = schechter_fit_lg(grid, phi_s=phi_s, M_s=M_s, alpha=alpha)
+            plt.plot(np.log10(grid), HIMF)
+            plt.plot(np.log10(grid), HIMF_Jones2018(MHI=grid), color='black')
+            plt.scatter(bin_centers, phi[i])
+            plt.yscale('log')
+            plt.show()
             #plt.savefig('Plots/HIMF_check.png')
             #plt.close()
             # 
@@ -280,6 +281,6 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
 if __name__ == "__main__":
 #    signal.signal(signal.SIGUSR1, handler)
     start = time.time()
-    MonteCarlo_HIMF_parallel(trials=1, zmax=1, zmin=0, dec1=20, dec2=80, obs_year=5, Spectra=True)
+    MonteCarlo_HIMF_parallel(trials=1001, zmax=1, zmin=0, dec1=20, dec2=50, obs_year=1, Spectra=True)
     end = time.time()
     print("Runtime is ", end-start, flush=True)
