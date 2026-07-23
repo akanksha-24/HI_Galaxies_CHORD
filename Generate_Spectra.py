@@ -108,19 +108,20 @@ def assign_units(x, B, W50, D, z, MHI_desired, Vlim=50, thermal_broaden=True):
 
     return V, S_broad     # Return V and S axes and W_ roots (for checking)
 
-# def assign_freqUnits(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5):
-#     V, S = assign_units(x, B, W50, D, z, MHI_desired, Vlim=50, thermal_broaden=True)
-#     f = gf.convert_f(V, z) * 1e6
-#     f = f[::-1]
-#     S = S[::-1]
-#     MHI_final = get_MHI_freq(f, S, z)
-#     print("MHI final is ", np.log10(MHI_final))
-#     print("MHI desired is ", np.log10(MHI_desired))
-#     return f, S
+def assign_freqUnits_convert(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5):
+    V, S = assign_units(x, B, W50, D, z, MHI_desired, Vlim=50, thermal_broaden=True)
+    f = gf.convert_f(V, z) * 1e6
+    f = f[::-1]
+    S = S[::-1]
+    MHI_final = get_MHI_freq(f, S, z)
+    #print("MHI final is ", np.log10(MHI_final))
+    #print("MHI desired is ", np.log10(MHI_desired))
+    return f, S
 
 def assign_freqUnits(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5):
+    #f_con, S_con = assign_freqUnits_convert(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5)
     W50broad = W50_broadened(W50)
-    W_freq = gf.width_vel2freq(del_Vrest=W50broad, z=z) # in Hz
+    W_freq = gf.width_vel2freq(del_Vrest=W50, z=z) # in Hz
     #print("Wf expected is ", gf.width_vel2freq(del_Vrest=W50broad, z=z))
 
     if coarseRes:
@@ -155,9 +156,9 @@ def assign_freqUnits(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5):
     
     freq_obs = gf.get_fobs(z) * 1e6 # in Hz
 
-    Sf_convolve = S_freq
-    #sigma_f = gf.width_vel2freq(del_Vrest=10, z=z) # in Hz
-    #Sf_convolve = convolve_spectrum(S_freq, freq_axis, sigma=sigma_f)
+    #Sf_convolve = S_freq
+    sigma_f = gf.width_vel2freq(del_Vrest=10, z=z) # in Hz
+    Sf_convolve = convolve_spectrum(S_freq, freq_axis, sigma=sigma_f)
     #df, _ = find_FWHM(freq_axis, Sf_convolve)
     #print("Wf actual is", df)
     #MHI_final = get_MHI_freq(freq_axis, Sf_convolve, z)
@@ -179,6 +180,12 @@ def assign_freqUnits(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5):
     # plt.plot(freq_final, Sf_convolve)
     # plt.title(f'log(MHI)={np.log10(MHI_desired):.1f}, Speak={S_int/W50broad:.3f} Jy')
     # plt.show()
+
+    # W50_broad = W50_broadened(W50)
+    # Wf = gf.width_vel2freq(del_Vrest=W50_broadened(W50_broad), z=z)
+    # print("W50_f in frequency expected is ", Wf)
+    # df = np.max(freq_axis[Sf_convolve > 0]) - np.min(freq_axis[Sf_convolve > 0])
+    # print("W50_f in frequency expected is ", Wf)
 
     return freq_final, Sf_convolve, Speak
 
@@ -305,7 +312,7 @@ def Generate_Spectra(size, MHI, W50, D_C, z, RMS, a=1, w=1, b1=None, b2=None, c=
         SNR_int.append(SNR)
         if plotSpectra:
             fig = plt.figure()
-            plt.plot(f_V, S)
+            #plt.plot(f_V, S)
             plt.plot(f, Sf)
             plt.xlabel('Frequency (MHz)')
             plt.ylabel('Flux Density (Jy)')

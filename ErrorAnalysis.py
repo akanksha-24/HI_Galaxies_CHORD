@@ -242,7 +242,7 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
                 SNR_spectra[j] = SNR_busy
                 # print("spectra SNR is ", SNR_spectra[j])
                 # print("previous SNR was", SNR[j])
-                # print("SNR ratio ", SNR[j]/SNR_spectra[j])
+                #print("SNR ratio ", SNR[j]/SNR_spectra[j])
 
         mask = SNR_spectra > sigma
         Vmax = Vmax_corr(MHI[mask], z[mask], RMS_mJy[mask], W50_broad[mask], SNR=SNR_spectra[mask],
@@ -267,8 +267,8 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
 
             if i % 100 == 0:
             #if i==1000:
-                np.save(f'catalogs_output/NEW_phi_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', np.asarray([phi, Counts]))
-                np.save(f'catalogs_output/NEW_z_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', z_Counts)
+                np.save(f'catalogs_output/Broaden_phi_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', np.asarray([phi, Counts]))
+                np.save(f'catalogs_output/Broaden_z_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', z_Counts)
         #print("Counts is ", Counts[i])
             #plt.figure()
             #grid = np.logspace(5,11,100000)
