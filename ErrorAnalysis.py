@@ -187,8 +187,8 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
         _, RMS_mJy, _ = build_survey(switch_int=7, obs_years=obs_year, z=z, start=dec1, end=dec2)
         RMS_Jy = RMS_mJy * 1e-3
         SNR = SNR_int(z, MHI, W50_broad, RMS_Jy, chan_width=upchan_res)
-        mask = (SNR > 6) #& (SNR < 12)
-        candidate_indices = np.where(SNR > 6)[0] #& (SNR < 12))[0]
+        mask = (SNR > sigma) #& (SNR < 12)
+        candidate_indices = np.where(SNR > sigma)[0] #& (SNR < 12))[0]
         SNR_spectra = SNR.copy()
 
         if Spectra: 
@@ -205,8 +205,7 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
                 # print("SNR ratio ", SNR[j]/SNR_spectra[j])
 
         mask = SNR_spectra > sigma
-        Vmax = Vmax_corr(MHI[mask], z[mask], RMS_mJy[mask], W50_broad[mask], SNR=SNR_spectra[mask],
-                        chan_width=upchan_res, sigma=sigma, solidang=solidang, spectra=Spectra, zsurvey=zmax, zmin=zmin)
+        Vmax = Vmax_corr(SNR[mask], z[mask], sigma, solidang, zsurvey=zmax, zmin=zmin)
 
         local_phi, _ = np.histogram(np.log10(MHI[mask]), bins=bins, weights=1/Vmax)
         local_Counts, _ = np.histogram(np.log10(MHI[mask]), bins=bins)
@@ -240,6 +239,6 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
             print("Runtime is ", end-start, flush=True)
 
 if __name__ == "__main__":
-    MonteCarlo_HIMF_parallel(trials=1001, zmin=0, zmax=1, dec1=20, dec2=50, obs_year=1, Spectra=True, Plot=False)
+    MonteCarlo_HIMF_parallel(trials=1001, zmin=0, zmax=0.1, dec1=20, dec2=50, obs_year=1, Spectra=True, Plot=False)
     
     
