@@ -193,7 +193,7 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
 
         if Spectra: 
             if rank==0:
-                print("number of detections to generate spectra", catalog[:,mask].shape[1], flush=True)
+                print("number of detections to generate spectra/rank", catalog[:,mask].shape[1], flush=True)
             for j in candidate_indices:
                 SNR_busy, _, _ = Generate_Spectra(MHI=MHI[j], W50=W50[j], z=z[j], RMS_Jy=RMS_Jy[j])
                 if SNR_busy==0:
@@ -205,7 +205,7 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
                 # print("SNR ratio ", SNR[j]/SNR_spectra[j])
 
         mask = SNR_spectra > sigma
-        Vmax = Vmax_corr(SNR[mask], z[mask], sigma, solidang, zsurvey=zmax, zmin=zmin)
+        Vmax = Vmax_corr(SNR_spectra[mask], z[mask], sigma, solidang, zsurvey=zmax, zmin=zmin)
 
         local_phi, _ = np.histogram(np.log10(MHI[mask]), bins=bins, weights=1/Vmax)
         local_Counts, _ = np.histogram(np.log10(MHI[mask]), bins=bins)
@@ -233,12 +233,13 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
                 plt.scatter(bin_centers, phi[i])
                 plt.yscale('log')
                 plt.savefig('Plots/HIMF_check.png')
+                plt.show()
                 plt.close()
             
             end = time.time()
             print("Runtime is ", end-start, flush=True)
 
 if __name__ == "__main__":
-    MonteCarlo_HIMF_parallel(trials=1001, zmin=0, zmax=1, dec1=20, dec2=50, obs_year=1, Spectra=True, Plot=False)
+    MonteCarlo_HIMF_parallel(trials=1001, zmin=0, zmax=1, dec1=20, dec2=50, obs_year=1, Spectra=True, Plot=True)
     
     
