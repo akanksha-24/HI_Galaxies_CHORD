@@ -239,6 +239,6 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
             print("Runtime is ", end-start, flush=True)
 
 if __name__ == "__main__":
-    MonteCarlo_HIMF_parallel(trials=1001, zmin=0, zmax=0.1, dec1=20, dec2=50, obs_year=1, Spectra=True, Plot=False)
+    MonteCarlo_HIMF_parallel(trials=1001, zmin=0, zmax=1, dec1=20, dec2=50, obs_year=1, Spectra=True, Plot=False)
     
     
