@@ -135,6 +135,7 @@ def Gen_Catalog(zmax, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
     z, D, V, dV = gf.comoving_volume(zmin=zmin, zmax=zmax, zstep=z_step, solidang=solidang)
     if rank==0:
         print("Max distance is ", np.max(D))
+        print("Min distance is ", np.min(D))
 
     #Split work among ranks
     all_indices = np.arange(len(dV))

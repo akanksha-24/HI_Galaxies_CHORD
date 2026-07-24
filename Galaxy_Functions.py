@@ -81,7 +81,8 @@ cosmo=cosmo_Jones2018 = set_cosmology(h=0.7)
 def comoving_volume(zmax, zmin=0, zstep=1e-3, solidang=4*np.pi):
     '''Get comoving volume, dV shell volume and distance from redshift'''
     if zmin==0:
-        zmin=zstep/2
+        #zmin=zstep/2
+        zmin=0.0011 # This is 5 Mpc, so as to start after the HVC confusion
     z_arr = np.arange(zmin, zmax, zstep)
     dz = np.diff(z_arr)
 
