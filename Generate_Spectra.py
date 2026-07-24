@@ -22,8 +22,6 @@ from matplotlib.backends.backend_pdf import PdfPages
 # size_mpi = comm.Get_size()  
 
 upchan_res = gf.width_vel2freq(del_Vrest=5) # for 5 km/s wide channels
-# need to fix
-#RMS_mJy = time2RMS(days=5*365/24, decl=np.deg2rad(20), nu=upchan_res*u.Hz).value
 
 def Busy_general(x, a, b1, b2, xe, xp, c, w, n):
     ''' This is the functional definition for a General Busy Function:
@@ -32,17 +30,16 @@ def Busy_general(x, a, b1, b2, xe, xp, c, w, n):
     err_p = special.erf(b1*(w+x-xe)) + 1
     err_m = special.erf(b2*(w-x+xe)) + 1
     pbola = (c*(np.abs(x-xp)**n)) + 1
-
-    # plt.figure()
-    # plt.plot(x, (a/4)*err_p*err_m*pbola)
-    # plt.show()
-    
     return (a/4)*err_p*err_m*pbola
 
 def integrate_profile(V, S):
     ''' Helper function which integrates an HI profile. The 'V' parameter is the velocity axis in km/s. The 'S' paramater is the flux in mJy'''
+    return np.trapz(S, x=V)  
 
-    return np.trapz(S, x=V)  # trapz is a numeric integrator in python using trapezoid rule, diff(V) if dV
+def MHI_to_Sint(MHI, z):    
+    D_L = gf.Luminosity_Dist(z) # in Mpc
+    Sint = MHI*(1+z) / (2.356e5 * (D_L**2))
+    return Sint
 
 def get_MHI(V, S, z):
     ''' Helper function which converts the integrated HI profile to HI Mass 
@@ -54,69 +51,184 @@ def get_MHI(V, S, z):
 def get_MHI_freq(f, S, z):
     ''' Helper function which converts the integrated HI profile in Hz (frequency axis) to HI Mass
     From Equation 45 of Meyer 2017'''
-
     D_L = gf.Luminosity_Dist(z) # in Mpc
     int_S = integrate_profile(f, S) # in Hz*Jy
-    #print("int_S", int_S)
-    return 49.7 * (D_L**2) * int_S #* 1e6 # in Hz*Jy
+    return 49.7 * (D_L**2) * int_S  # in Hz*Jy
 
+def MHI_to_Sint_freq(MHI, z):    
+    D_L = gf.Luminosity_Dist(z) # in Mpc
+    return MHI / (49.7 * (D_L**2))
 
-# def find_FWHM(x, y, level=0.5):
-#     ''' Helper function which finds the roots of the HI profile at the FWHM, to set to W50 width. 
-#     Returns an array of all roots r[] found where the FWHM width is r[-1] - r[0] '''
+# Gaussian Function
+def normalDist(x, sigma=10, x0=0):
+    G =  np.exp(-(x - x0)**2 / (2*sigma**2)) 
+    return G / np.trapz(G, x)                 # normalize computationally 
 
-#     spline = UnivariateSpline(x, y-(np.max(y)*level), s=0)
-#     roots = spline.roots() 
-#     FWHM = roots[-1] - roots[0]
-#     if len(roots) < 2:
-#         return np.nan, roots  # no valid FWHM found
-#     return FWHM, roots
+def convolve_spectrum(S, V, sigma=10):
+    dv = V[1] - V[0]
+    G = normalDist(V, sigma=sigma)
+    S_broad = fftconvolve(S, G, mode='same') * dv  # since fftconvolve is a sum, must include dv
+    return S_broad, G
+
 
 def find_FWHM(x,y, level=0.5):
     profile_idx = np.argwhere(y > level*np.max(y))[:,0]
     width = x[np.max(profile_idx)] - x[np.min(profile_idx)]
     roots = [x[np.min(profile_idx)],x[np.max(profile_idx)]]
-    return width, roots
+    return width
 
-def assign_units(x, B, W50, D, z, MHI_desired, Vlim=50, thermal_broaden=True):
+def units_check(V, B, Vaxis, B_resamp, S, S_broad, G, W50, z, MHI_desired, thres=1e-3):
+    channels = S_broad > np.max(S_broad)*thres
+    W50_broad = W50_broadened(W50)
+    MHI_measured = get_MHI(Vaxis[channels], S_broad[channels], z)
+    W50_measured = find_FWHM(Vaxis, S_broad)
+    W50_f_measured = gf.width_vel2freq(W50_measured,z) / 1e3
+    W50_f_expected = gf.width_vel2freq(W50_broad,z) / 1e3
+    S21_measured = integrate_profile(Vaxis[channels], S_broad[channels])
+    S21_expected = MHI_to_Sint(MHI_desired, z)
+    spectra_extent_kms = np.max(Vaxis[channels]) - np.min(Vaxis[channels])
+    spectra_extent_kHz = gf.width_vel2freq(spectra_extent_kms,z) / 1e3
+    Nchans = spectra_extent_kHz / (upchan_res/1e3)
+    
+    plt.figure()
+    plt.plot(V,B, label='scaled to width')
+    plt.plot(Vaxis,B_resamp, label='padded')
+    plt.legend()
+    plt.show()
+    
+    plt.figure(figsize=[10,8])
+    plt.plot(Vaxis, S, label='scaled to height')
+    plt.plot(Vaxis, S_broad, label='thermal broadened')
+    #plt.xlim(-W50_broad, W50_broad)
+    plt.legend()
+    plt.show()
+    
+    plt.figure()
+    plt.plot(Vaxis, S_broad, label='thermal broadened')
+    plt.axvline(np.min(Vaxis[channels]))
+    plt.axvline(np.max(Vaxis[channels]))
+    plt.legend()
+    plt.show()
+    
+    print(f"MHI measured is {np.log10(MHI_measured):.2f}")
+    print(f"MHI expected is {np.log10(MHI_desired):.2f}")
+    
+    print(f"W50 measured is {W50_measured:.2f} km/s")
+    print(f"W50 expected is {W50_broad:.2f} km/s")
+    
+    print(f"W50_f measured is {W50_f_measured:.2f} kHz")
+    print(f"W50_f expected is {W50_f_expected:.2f} kHz")
+    
+    print(f"S21 measured is {S21_measured} Jy*km/s", )
+    print(f"S21 expected is {S21_expected} Jy*km/s", )
+    
+    print(f"S21_peak measured is {np.max(S_broad)} Jy")
+    print(f"S21_peak expected is {S21_expected/W50_broad} Jy")
+    
+    print(f"Velocity spectral extent {spectra_extent_kms} km/s")
+    print(f"Frequency spectral extent {spectra_extent_kHz} kHz")
+    print(f"Frequency channels {Nchans}")
+    
+
+def assign_units(x, B, W50, z, MHI_desired, Vres=5, thermal_broaden=True, check=True):
     '''assigns units of velocity (km/s) vs. Flux density (Jy)'''
-
-    # scale x-axis
-    S_norm = (B/np.max(B))                  # Peak Flux set to 1 Jy if not specified
-    FWHM, roots = find_FWHM(x, B)
+    
+    FWHM = find_FWHM(x, B)
+    # don't allow spectra to be arbitarily narrow 
+    if W50 < Vres:
+        W50=Vres
     scale = W50 / FWHM                      # scaling factor from unitless → km/s    
-    V = x * scale                           # velocity axis in km/s
+    V = x * scale                           # velocity axis in km/s 
+    dV = V[1] - V[0]
+    W50_broad = W50_broadened(W50)
 
-    # for very narrow spectra, pad 0's to be able to convolve with gaussian later
-    if np.max(V) <= Vlim:
-        dV = V[1] - V[0]
-        if dV < 1e-6: dV = 1e-6 # avoid divide by 0
-        n_pad = int((Vlim - np.max(V)) / dV)  # extend array to -20 to 20 km/s
-        left_pad  = V[0] - dV * np.arange(n_pad, 0, -1)
-        right_pad = V[-1] + dV * np.arange(1, n_pad + 1)
-        V = np.concatenate([left_pad, V, right_pad])
-        S_norm = np.pad(S_norm, pad_width=(n_pad, n_pad), mode='constant', constant_values=0.0)   
-
+    # pad velocity range to allow for narrow spectra convolution and high mass spectra
+    pad = W50_broad*2
+    Vaxis = np.arange(-pad, pad+dV, Vres)
+    B_resamp = np.interp(x=Vaxis, xp=V, fp=B)
+    
     # Scale y-axis
-    MHI_initial = get_MHI(V, S_norm, z) 
-    y_scale = MHI_desired / MHI_initial   
-    S = S_norm * y_scale  
+    MHI_initial = get_MHI(Vaxis, B_resamp, z) 
+    y_scale = MHI_desired / MHI_initial
+    S = B_resamp * y_scale 
+    
+    # convolve with Gaussian
     if thermal_broaden:
-        S_broad = convolve_spectrum(S, V)
+        S_broad, G = convolve_spectrum(S, Vaxis)
     else:
         S_broad = S
+        
+    if check:
+        units_check(V, B, Vaxis, B_resamp, S, S_broad, G, W50, z, MHI_desired)
 
-    return V, S_broad     # Return V and S axes and W_ roots (for checking)
+    return Vaxis, S, S_broad 
 
-def assign_freqUnits_convert(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5):
-    V, S = assign_units(x, B, W50, D, z, MHI_desired, Vlim=50, thermal_broaden=True)
-    f = gf.convert_f(V, z) * 1e6
+def conversion_check(f, S, S_broad, faxis, S_resamp, W50, z, MHI_desired, thres=1e-3):
+    channels = S_resamp > np.max(S_resamp)*thres
+    MHI_measured = get_MHI_freq(faxis[channels], S_resamp[channels], z)
+    W50_f_measured = find_FWHM(faxis, S_resamp) / 1e3
+    S21_measured = integrate_profile(faxis[channels], S_resamp[channels])
+    spectra_extent_kHz = (np.max(faxis[channels]) - np.min(faxis[channels])) / 1e3
+    W50_expected = W50_broadened(W50)
+    W50_f_expected = gf.width_vel2freq(W50_expected, z) / 1e3
+    W50_measured = gf.width_freq2vel(W50_f_measured/1e3, z) 
+    S21_expected = MHI_to_Sint_freq(MHI_desired, z)
+    spectra_extent_kms = gf.width_freq2vel(spectra_extent_kHz/1e3, z)
+    Nchans = spectra_extent_kHz / (upchan_res/1e3)
+    freq_obs = gf.get_fobs(z) * 1e6 
+    
+    print(f"MHI measured is {np.log10(MHI_measured):.2f}")
+    print(f"MHI expected is {np.log10(MHI_desired):.2f}")
+    
+    print(f"W50 measured is {W50_measured:.2f} km/s")
+    print(f"W50 expected is {W50_expected:.2f} km/s")
+    
+    print(f"S21 measured is {S21_measured} Jy*Hz", )
+    print(f"S21 expected is {S21_expected} Jy*Hz", )
+    
+    print(f"W50_f measured is {W50_f_measured:.2f} kHz")
+    print(f"W50_f expected is {W50_f_expected:.2f} kHz")
+    
+    print(f"S21_peak measured is {np.max(S_broad)} Jy")
+    print(f"S21_peak expected is {S21_expected/(W50_f_expected*1e3)} Jy")
+    
+    print(f"Velocity spectral extent {spectra_extent_kms} km/s")
+    print(f"Frequency spectral extent {spectra_extent_kHz} kHz")
+    print(f"Frequency channels expected {Nchans}")
+    print(f"Frequency channels measured", np.sum(channels))
+    #print(S_broad)
+    
+    plt.figure(figsize=[10,8])
+    plt.plot(f, S)
+    plt.plot(f, S_broad, linestyle='--')
+    plt.plot(faxis, S_resamp, linestyle=':')
+    #plt.xlim(-W50_f_expected*1e3+freq_obs, W50_f_expected*1e3+freq_obs)
+    plt.show()
+    
+    plt.figure(figsize=[10,8])
+    plt.plot(faxis, S_resamp, linestyle=':')
+    plt.axvline(np.min(faxis[channels]))
+    plt.axvline(np.max(faxis[channels]))
+    #plt.xlim(-W50_f_expected*1e3+freq_obs, W50_f_expected*1e3+freq_obs)
+    plt.show()
+    
+
+def assign_freqUnits_convert(x, B, W50, z, MHI_desired, check=True):
+    V, S, S_broad = assign_units(x, B, W50, z, MHI_desired, check=check)
+    f = gf.convert_f(V, z) * 1e6 #MHz to Hz
     f = f[::-1]
-    S = S[::-1]
-    MHI_final = get_MHI_freq(f, S, z)
-    #print("MHI final is ", np.log10(MHI_final))
-    #print("MHI desired is ", np.log10(MHI_desired))
-    return f, S
+
+    W50_f_expected = gf.width_vel2freq(W50_broadened(W50), z)
+    freq_obs = gf.get_fobs(z) * 1e6 # in Hz
+    
+    #put the spectra on the CHORD telescope resolution - upchannelized
+    pad = W50_f_expected*2
+    faxis = np.arange(-pad, pad+upchan_res, upchan_res) + freq_obs
+    S_resamp = np.interp(x=faxis, xp=f, fp=S_broad)
+    
+    if check:
+        conversion_check(f, S, S_broad, faxis, S_resamp, W50, z, MHI_desired)
+    return faxis, S_resamp
 
 def assign_freqUnits(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5):
     #f_con, S_con = assign_freqUnits_convert(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5)
@@ -189,87 +301,35 @@ def assign_freqUnits(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5):
 
     return freq_final, Sf_convolve, Speak
 
-
-# Gaussian Function
-def normalDist(x, sigma=10, x0=0):
-    G =  np.exp(-(x - x0)**2 / (2*sigma**2)) 
-    return G / np.trapz(G, x)                 # normalize computationally 
-
-def convolve_spectrum(S, V, sigma=10):
-    #G = gaussian_kernel(V)
-    dv = V[1] - V[0]
-    G = normalDist(V, sigma=sigma)
-    # print("AREA is ", np.trapz(G, V))
-    # plt.figure()
-    # plt.plot(V, G)
-    # plt.show()
-    S_broad = fftconvolve(S, G, mode='same') * dv  # since fftconvolve is a sum, must include dv
-    return S_broad
-
-# def gaussian_kernel(V, sigma=10):
-#     #sigma = FWHM / (2*np.sqrt(2*np.log(2)))
-#     G = normalDist(V, sigma)                # center kernel at 0
-#     return G / G.sum()                      # normalize discrete sum = 1
-
-# def convolve_spectra(B, V, FWHM):
-#     G = gaussian_kernel(V, FWHM)
-#     return fftconvolve(B, G[None, :], mode='same', axes=1)
-
-def SNRint(f, Sf, z, W50, MHI, D_C, RMS_mJy, obs_yr=5, prevSNR=None):
+def SNR_check(MHI, W50, z, RMS_Jy, SNRint):
     W50_broad = W50_broadened(W50)
-    Wf = gf.width_vel2freq(del_Vrest=W50_broadened(W50_broad), z=z)
+    SNR_W50 = gf.SNR_int(z=z, MHI=MHI, DeltaV=W50_broad, RMS_chan=RMS_Jy, chan_width=upchan_res)
+    SNR_spectra = SNRint
+    print(f"SNRint from W50 estimate is {SNR_W50:.2f}")
+    print(f"SNRint from spectra is {SNR_spectra:.2f}")
+    print(f"the ratio is {SNR_W50/SNR_spectra:.2f}")
+    
 
-    #chan_mask = Sf > RMS_mJy*1e-3
-    #chan_mask = Sf > RMS_mJy*1e-8
-    chan_mask = Sf > 0 
-    S50_mask = Sf > 0.5*np.max(Sf)
+def SNRint(f, Sf, z, W50, MHI, RMS_Jy, window=1e-3, check=True):
+    if z==0:
+        z=1e-4
 
-    #if np.log10(MHI) > 10: 
-    #print("W50 broadened is ", W50_broad)
-    #print("W50_f in frequency expected is ", Wf)
-    #df = np.max(f[chan_mask]) - np.min(f[chan_mask])
-    #print("W50_f in frequency actual is ", df)
-    # print("the ratio is ", dV/W50_broad)
-    # print("MHI is ", np.log10(MHI))
-    S_int = integrate_profile(f[chan_mask], Sf[chan_mask]) # in Jy*Hz
-    #print("integrated spectrum Sint", S_int)
+    channels = Sf > np.max(Sf)*window 
+    S_int = integrate_profile(f[channels], Sf[channels]) # in Jy*Hz
     DL = gf.Luminosity_Dist(z)
-    #print("expected Sint", MHI/(49.7*DL**2))
-    #print("Sint from profile is (Jy*Hz)", S_int)
-    #print("Sint from MHI is (Jy*Hz)", get_S21_freq(f, MHI, z))
-    #N_chans = np.sum(Sf > RMS_mJy*1e-3)
-    N_chans = np.sum(chan_mask)
-    #print("N_chans is ", N_chans)
-    if N_chans!=0:
-        SNRint = S_int / (RMS_mJy*upchan_res*1e-3*np.sqrt(N_chans))
-        #print(f"RMS is {RMS_mJy} mJy at redshift z={z}")
-        #print("Spectra SNR", SNRint)
-        #print("previous SNR", prevSNR)
+    N_chans = np.sum(channels)
+    
+    if N_chans!=0: # avoid divide by 0
+        SNRint = S_int / (RMS_Jy*upchan_res*np.sqrt(N_chans))
     else:
         SNRint=0
-        #if (prevSNR is None)==0:
-        #    print("previous 0 SNR was ", prevSNR)
-    # if Wf/df < 1:
-    #     print("width ratio is ", Wf/df)
-    #     print("SNR ratio is ", prevSNR/SNRint)
-    # else:
-    #     print("ELSE SNR ratio is ", prevSNR/SNRint)
-    #print("SNRint is ", SNRint)
-    #SNRint_check = gf.SNR_int_check(z=z, MHI=MHI, df=df, RMS_chan=RMS_mJy*1e-3, chan_width=upchan_res)
-    #print("SNRint_check is ", SNRint_check)
+    
+    if check:
+        SNR_check(MHI, W50, z, RMS_Jy, SNRint)
+               
     return SNRint
 
-    #SNRint2 = gf.SNR_int(z, MHI, W50_broad, RMS_mJy*1e-3, chan_width=183000)#=upchan_res)
-    #print("integrated SNR old way is ", SNRint2)
-    #v_ch = 5
-    #f_smo = np.minimum(W50_broad/(v_ch),(10.**2.5)/v_ch)
-    #SNR_MJ = MHI*np.sqrt(f_smo)/(RMS_mJy*W50_broad*235.6*D_C**2)
-    #print("integrated singal to noise by MJ is ", SNR_MJ)
-
-
-
-def Generate_Spectra(size, MHI, W50, D_C, z, RMS, a=1, w=1, b1=None, b2=None, c=None, xe=None, xp=None, n=None, 
-                     thermal_broaden=True, fname='Plots/spectra_check_z0p1.pdf', plotSpectra=False, prevSNR=None):
+def Generate_Spectra(MHI, W50, z, RMS_Jy, a=1, w=1, b1=None, b2=None, c=None, xe=None, xp=None, n=None):
     ''' Main function which generates an HI Spectrum. 
     The shape of the busy function (specified by a, b1, b2, c) is randomly generated (unless otherwise specified). 
     The area under the profile is set by MHI. 
@@ -277,57 +337,27 @@ def Generate_Spectra(size, MHI, W50, D_C, z, RMS, a=1, w=1, b1=None, b2=None, c=
     The profile is centered around 0 so xe=0 and xp=0. We use a second order n=2 general busy function'''
 
     #print("Generating Spectra....")
-    start = time.time()
-
-    #W = VHI*2*np.sin(i) # W_50       
+    #start = time.time()
+    
+    if z==0:
+        z=1e-4 # avoid multiply/divide by 0
+      
     x = np.linspace(-20, 20, 10000).astype(np.float32)  # unitless axes used in generalized busy function definition
 
-    #D_L1 = (1+z)*D_C
-    D_L = cosmo.luminosity_distance(z).to_value(u.Mpc)
+    if b1==None: b1 = np.random.uniform(1, 5)
+    if b2==None: b2 = np.random.uniform(1, 5)
+    if c==None: c = np.random.uniform(0, 4)
+    if xe==None: xe = 0 #np.random.uniform(-0.1, 0.1, size=size)
+    if xp==None: xp =  0 #np.random.uniform(-0.1, 0.1, size=size)
+    if n==None: n = np.random.uniform(1, 4) # n=odd number results in negative values, n=4 is too broad
 
-    if b1==None: b1 = np.random.uniform(1, 5, size=size)
-    if b2==None: b2 = np.random.uniform(1, 5, size=size)
-    if c==None: c = np.random.uniform(0, 4, size=size)
-    if xe==None: xe = np.zeros(size) #np.random.uniform(-0.1, 0.1, size=size)
-    if xp==None: xp =  np.zeros(size) #np.random.uniform(-0.1, 0.1, size=size)
-    if n==None: n = np.random.uniform(1, 4, size=size) # n=odd number results in negative values, n=4 is too broad
-
-    SNR_int = []
-
-    pdf = PdfPages(fname) if plotSpectra else None
-    for i in np.arange(size):
-        #print(i)
-        B = Busy_general(x, a, b1[i], b2[i], xe[i], xp[i], c[i], w, n[i])
-        #V, S = assign_units(x, B, 1, D_L[i], z[i], MHI_desired=MHI[i])
-        #V, S = assign_units(x, B, W50[i], D_L[i], z[i], MHI_desired=MHI[i])
-        f, Sf, Speak = assign_freqUnits(x, B, W50[i], D_L[i], z[i], MHI_desired=MHI[i])
-        #f_V = gf.convert_f(V, z[i]) * 1e6 # in Jy
-        #final_M = get_MHI_freq(f, Sf, z[i])
-        #print("Final  M is ", final_M)
-
-        SNR = SNRint(f, Sf, z[i], W50[i], MHI[i], D_C=D_C[i], RMS_mJy=RMS[i], prevSNR=prevSNR[i])
-        #print("SNR is in freq units is ", SNR)
-        #SNR = SNRint(f_V[::-1], S[::-1], z[i], W50[i], MHI[i], D_C=D_C[i], RMS_mJy=RMS[i], prevSNR=prevSNR[i])
-        #print("SNR from Velocity conversion is ", SNR)
-        SNR_int.append(SNR)
-        if plotSpectra:
-            fig = plt.figure()
-            #plt.plot(f_V, S)
-            plt.plot(f, Sf)
-            plt.xlabel('Frequency (MHz)')
-            plt.ylabel('Flux Density (Jy)')
-            plt.title(f'log(MHI)={np.log10(MHI[i]):.1f}, D={D_C[i]:.0f} Mpc, z={z[i]:.2f}, SNR={SNR:.0f}, Speak={Speak*1000:.3f} mJy')
-            pdf.savefig(fig)
-            plt.show()
-            #plt.close(fig)
-
+    B = Busy_general(x, a, b1, b2, xe, xp, c, w, n)
+    f, Sf = assign_freqUnits_convert(x, B, W50, z=z, MHI_desired=MHI, check=False)
+    SNR_int = SNRint(f, Sf, z, W50, MHI, RMS_Jy, check=False)
+                                                   
     #end = time.time()
-    if pdf is not None:
-        pdf.close()
-    #return x, B
-    #print(f"Runtime: {end - start:.3f} seconds")
-    return SNR_int
-    #return final_M, V, S, SNR_int#, freq
+    #return f, Sf, Sf_broad, V, S, S_broad, f_v, Sf_broad_v, SNR_int
+    return SNR_int, f, Sf
 
 def Save_Spectra(catalog_fl, size=None):
     catalog = np.load(catalog_fl)
