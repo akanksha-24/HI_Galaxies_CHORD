@@ -178,6 +178,7 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
         catalog = Gen_Catalog(zmax=zmax, dec1=dec1, dec2=dec2, zmin=zmin, save=False, 
                             phi_s=phi_s, alpha=alpha, M_s=M_s, Fluxlim=True, obs_year=obs_year, 
                             comm=comm, gather=False)
+        
         MHI = catalog[0]
         W50 = catalog[3]
         D = catalog[6]
@@ -234,12 +235,17 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
                 plt.yscale('log')
                 plt.savefig('Plots/HIMF_check.png')
                 plt.show()
+
+                plt.figure()
+                plt.step(bin_centers, Counts[0])
+                plt.yscale('log')
+                plt.show()
                 plt.close()
             
             end = time.time()
             print("Runtime is ", end-start, flush=True)
 
 if __name__ == "__main__":
-    MonteCarlo_HIMF_parallel(trials=1001, zmin=0, zmax=1, dec1=20, dec2=50, obs_year=1, Spectra=True, Plot=True)
+    MonteCarlo_HIMF_parallel(trials=1, zmin=0.0011, zmax=1, dec1=20, dec2=50, obs_year=1, Spectra=True, Plot=False)
     
     
