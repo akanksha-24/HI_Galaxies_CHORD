@@ -222,8 +222,8 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
             z_Counts[i] = global_z_counts
 
             if i % 100 == 0:
-                np.save(f'catalogs_output/Broaden_phi_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', np.asarray([phi, Counts]))
-                np.save(f'catalogs_output/Broaden_z_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', z_Counts)
+                np.save(f'catalogs_output/Convert_phi_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', np.asarray([phi, Counts]))
+                np.save(f'catalogs_output/Convert_z_counts_checkpoint_wspectra_{obs_year}yr_z{zmax}_{i}.npy', z_Counts)
 
             if Plot:
                 plt.figure()
