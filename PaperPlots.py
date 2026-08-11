@@ -284,8 +284,8 @@ def HIMF_Counts_err(err_cat, labels, ALF, RMS, showSurveys=True,
 
     HI_surveys = Table3_Ma2024()
     lg_MHI = HI_surveys[:,0]
-    # HIPASS = HI_surveys[:,1]
-    # HIPASS_err = HI_surveys[:,2]
+    HIPASS = HI_surveys[:,1]
+    HIPASS_err = HI_surveys[:,2]
     #ALFALFA = HI_surveys[:,3]
     #ALFALFA_err = HI_surveys[:,4]
     FASHI_N = HI_surveys[:,5]
@@ -305,15 +305,16 @@ def HIMF_Counts_err(err_cat, labels, ALF, RMS, showSurveys=True,
     ALFALFA = ALFALFA[ALF_count > minCount]
     ALFALFA_err = ALFALFA_err[ALF_count > minCount]
 
-    HIPASS_dat, HIPASS_error = HIPASS_data()
-    HIP_x = HIPASS_dat[:,0]
-    HIPASS = HIPASS_dat[:,1]
-    HIPASS_err = HIPASS_error
-    print("error shape", HIPASS_err.shape)
+    # HIPASS_dat, HIPASS_error = HIPASS_data()
+    # HIP_x = HIPASS_dat[:,0]
+    # HIPASS = HIPASS_dat[:,1]
+    # HIPASS_err = HIPASS_error
+    # print("error shape", HIPASS_err.shape)
 
     for i in range(len(err_cat)):
         if i < 2:
             phi_counts = np.load(err_cat[i])
+            mask = phi_counts[0]!=0
             phi = phi_counts[0]
             Counts = phi_counts[1]
             Counts_mean = np.mean(Counts, axis=0)
@@ -366,10 +367,10 @@ def HIMF_Counts_err(err_cat, labels, ALF, RMS, showSurveys=True,
     if showSurveys:
         axs[0].errorbar(ALF_x, ALFALFA, yerr=ALFALFA_err,
                     fmt='.', ecolor='gray', capsize=3, elinewidth=1, markeredgewidth=0.3, color=color[2], label='ALFALFA')
-        # axs[0].errorbar(lg_MHI, HIPASS, yerr=HIPASS_err,
-        #         fmt='.', ecolor='gray', capsize=3, elinewidth=1, markeredgewidth=0.3, color=color[3], label='HIPASS')
-        axs[0].errorbar(HIP_x, HIPASS, yerr=HIPASS_err,
-               fmt='.', ecolor='gray', capsize=3, elinewidth=1, markeredgewidth=0.3, color=color[3], label='HIPASS')
+        axs[0].errorbar(lg_MHI, HIPASS, yerr=HIPASS_err,
+                fmt='.', ecolor='gray', capsize=3, elinewidth=1, markeredgewidth=0.3, color=color[3], label='HIPASS')
+        #axs[0].errorbar(HIP_x, HIPASS, yerr=HIPASS_err,
+        #       fmt='.', ecolor='gray', capsize=3, elinewidth=1, markeredgewidth=0.3, color=color[3], label='HIPASS')
         #print(HIPASS_err)
         axs[0].errorbar(lg_MHI, FASHI_N, yerr=FASHI_N_err,
                 fmt='.', ecolor='gray', capsize=3, elinewidth=1, markeredgewidth=0.3, color=color[4], label='FASHI N')
@@ -405,7 +406,7 @@ def HIMF_Counts_err(err_cat, labels, ALF, RMS, showSurveys=True,
     #axs[0].tick_params(labelbottom=False) 
     #axs[0].set_title('D < 40 Mpc')
     #plt.tight_layout()
-    plt.savefig('Plots/PhiCounts_error_z1_HIPASS.pdf', bbox_inches='tight')
+    plt.savefig('Plots/PhiCounts_error_z1.pdf', bbox_inches='tight')
     #plt.show()
 
 def HIMF_PrevSurveys(alf_cat, minCount=10):
@@ -609,27 +610,31 @@ def z_Counts_err(err_cats, labels, mask=True, log=True, zmax=1):
     fig, axs = plt.subplots(1, 1, figsize=(5, 4), dpi=300)
     color = cm.get_cmap('Dark2', 7).colors
     z_step = 0.008
-    z_bins = np.arange(-1*z_step/2, zmax+z_step, z_step)
-    mask = np.where(z_bins <= 0.77)
-    z_bins = z_bins[mask]
-    #mid_bins = gf.mid_bin(z_bins)
+    z_bins = np.arange(-1*z_step/2, zmax+z_step, z_step)#[0:126] # slight shape mismatch
+    #mask = np.where(z_bins <= 0.77)
+    #z_bins = z_bins[mask]
+    mid_bins = gf.mid_bin(z_bins)
     for i in np.arange(len(err_cats)):
         err_cat = err_cats[i]
         if i < 2:
             z_counts = np.load(err_cat)
-            Counts_mean = np.mean(z_counts[:,mask], axis=0)[0]
-            Counts_std = np.std(z_counts[:,mask], axis=0)[0]
+            print(z_bins.shape)
+            print(z_counts.shape)
+            Counts_mean = np.mean(z_counts, axis=0)
+            Counts_std = np.std(z_counts, axis=0)
+            #Counts_mean = np.mean(z_counts[:,mask], axis=0)[0]
+            #Counts_std = np.std(z_counts[:,mask], axis=0)[0]
 
-            axs.step(z_bins, Counts_mean, where='post', label=labels[i], color=color[i])
-            axs.fill_between(z_bins, Counts_mean-Counts_std, Counts_mean+Counts_std, alpha=0.3, color=color[i], step='post')
+            axs.step(mid_bins, Counts_mean, where='post', label=labels[i], color=color[i])
+            axs.fill_between(mid_bins, Counts_mean-Counts_std, Counts_mean+Counts_std, alpha=0.3, color=color[i], step='post')
         else:
             plot.dndz_catalog(err_cats[i], ax=axs, label='', color=color[i], Usedz=False, bins=50)
             axs.plot(0, 0, color=color[i], label='ALFALFA')
     axs.grid(True, linewidth=0.3)
     axs.set_ylabel('Counts')
     axs.set_xlabel('Redshift')
-    axs.set_ylim(5, 10**5.5)
-    axs.set_xlim(-0.05, 0.65)
+    axs.set_ylim(1, 10**5.5)
+    axs.set_xlim(-0.05, 0.58)
     if mask:
         legend_patch = add_zmask(ax=axs)
     if log:
@@ -740,16 +745,21 @@ def Show_Catalogs(catalogs):
 
 
 if __name__ == "__main__":
+    #Counts_err(err_cat='phi_counts_checkpoint_5yr_z1_1000.npy')
+    z_Counts_err(err_cats=['Convert_z_counts_checkpoint_wspectra_5yr_z1_1000.npy',
+                          'Convert_z_counts_checkpoint_wspectra_1yr_z1_1000.npy',
+                          'catalogs_output/ALFALFA_a100_90complete.npy'],
+                          labels=['5 year CHORD', '1 year CHORD', 'ALFALFA'])
     # Counts_err(err_cat='phi_counts_checkpoint_5yr_z1_1000.npy')
     # z_Counts_err(err_cats=['z_counts_checkpoint_5yr_z1_1000.npy',
     #                       'z_counts_checkpoint_1yr_z1_1000.npy',
     #                       'catalogs_output/ALFALFA_a100_90complete.npy'],
     #                       labels=['5 year CHORD', '1 year CHORD', 'ALFALFA'])
-    HIMF_PrevSurveys(alf_cat='catalogs_output/ALFALFA_a100_90complete.npy')
-    # HIMF_Counts_err(err_cat=['phi_counts_checkpoint_5yr_z1_1000.npy',    
-    #                          'phi_counts_checkpoint_1yr_z1_1000.npy',
+    #HIMF_PrevSurveys(alf_cat='catalogs_output/ALFALFA_a100_90complete.npy')
+    # HIMF_Counts_err(err_cat=['Convert_phi_counts_checkpoint_wspectra_5yr_z1_1000.npy',    
+    #                          'Convert_phi_counts_checkpoint_wspectra_1yr_z1_1000.npy',
     #                          'catalogs_output/ALFALFA_a100_90complete.npy'], 
-    #                 labels=['5 year', '1 year', 'ALFALFA'], ALF=None, RMS=None, showSurveys=True, minCount=10)
+    #                  labels=['5 year', '1 year', 'ALFALFA'], ALF=None, RMS=None, showSurveys=True, minCount=10)
     #Counts_err(err_cat='phi_counts_z0p3to0p7_100.npy')
     #HIMF_Counts_err(err_cat='phi_counts_z0p3to0p7_100.npy', labels=None, ALF=None, RMS=None, showSurveys=False, minCount=10)
     #HIMF_Counts_err(err_cat='phi_counts_z0p1_100.npy', labels=None, ALF=None, RMS=None, showSurveys=True, minCount=10)

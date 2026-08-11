@@ -11,10 +11,15 @@ from Generate_Spectra import *
 from mpi4py import MPI
 
 def choose_SchechParams(alpha_=-1.25, del_alpha=0.1, M_s_=10**9.94, del_M_s=10**9.94*np.log(10)*0.051,
-                        phi_s_=4.5e-3, del_phi_s=np.sqrt(0.2**2 + 0.8**2)*1e-3):
-    alpha = np.random.normal(loc=alpha_, scale=del_alpha, size=1)
-    M_s = np.random.normal(loc=M_s_, scale=del_M_s, size=1)
-    phi_s = np.random.normal(loc=phi_s_, scale=del_phi_s, size=1)
+                        phi_s_=4.5e-3, del_phi_s=np.sqrt(0.2**2 + 0.8**2)*1e-3, choose=True):
+    if choose:
+        alpha = np.random.normal(loc=alpha_, scale=del_alpha, size=1)
+        M_s = np.random.normal(loc=M_s_, scale=del_M_s, size=1)
+        phi_s = np.random.normal(loc=phi_s_, scale=del_phi_s, size=1)
+    else:
+        alpha=-1.25
+        M_s=10**9.94
+        phi_s=4.5e-3  
     return alpha, M_s, phi_s
 
 def Vmax_corr(SNR, z, sigma, solidang, zsurvey=None, zmin=None):
@@ -134,7 +139,8 @@ def MonteCarlo_HIMF(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, ob
     #arr = np.load('catalogs_output/phi_counts.npy')
     #print(arr.shape)
     
-def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, obs_year=5, Spectra=False, Plot=False):
+def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, sigma=6, FluxLim=True,
+                             obs_year=5, Spectra=False, Plot=False, chooseHIMF=True, save=True):
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -163,7 +169,7 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
     for i in np.arange(trials):   
         if rank==0:
             print(f"Trial {i}", flush=True)
-            alpha, M_s, phi_s = choose_SchechParams()
+            alpha, M_s, phi_s = choose_SchechParams(choose=chooseHIMF)
         else:
             alpha = None
             M_s = None
@@ -176,7 +182,7 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
         np.random.seed(rank_seed)
 
         catalog = Gen_Catalog(zmax=zmax, dec1=dec1, dec2=dec2, zmin=zmin, save=False, 
-                            phi_s=phi_s, alpha=alpha, M_s=M_s, Fluxlim=True, obs_year=obs_year, 
+                            phi_s=phi_s, alpha=alpha, M_s=M_s, Fluxlim=FluxLim, obs_year=obs_year, 
                             comm=comm, gather=False)
         
         MHI = catalog[0]
@@ -206,6 +212,8 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
                 # print("SNR ratio ", SNR[j]/SNR_spectra[j])
 
         mask = SNR_spectra > sigma
+        if save:
+            np.save("5yr_z0p01_SpectraSNR_catalog_volLim.npy", np.asarray([MHI, D, z, SNR_spectra]))
         Vmax = Vmax_corr(SNR_spectra[mask], z[mask], sigma, solidang, zsurvey=zmax, zmin=zmin)
 
         local_phi, _ = np.histogram(np.log10(MHI[mask]), bins=bins, weights=1/Vmax)
@@ -230,7 +238,7 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
                 grid = np.logspace(5,11,100000)
                 HIMF = schechter_fit_lg(grid, phi_s=phi_s, M_s=M_s, alpha=alpha)
                 plt.plot(np.log10(grid), HIMF)
-                plt.plot(np.log10(grid), HIMF_Jones2018(MHI=grid), color='black')
+                plt.plot(np.log10(grid), HIMF_Jones2018(MHI=grid), color='black', linestyle='--')
                 plt.scatter(bin_centers, phi[i])
                 plt.yscale('log')
                 plt.savefig('Plots/HIMF_check.png')
@@ -246,6 +254,8 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
             print("Runtime is ", end-start, flush=True)
 
 if __name__ == "__main__":
-    MonteCarlo_HIMF_parallel(trials=1001, zmin=0.0011, zmax=1, dec1=20, dec2=50, obs_year=1, Spectra=True, Plot=False)
+    #MonteCarlo_HIMF_parallel(trials=1001, zmin=0.0011, zmax=1, dec1=20, dec2=50, obs_year=1, Spectra=True, Plot=False)
+    MonteCarlo_HIMF_parallel(trials=1, zmin=0, zmax=0.01, dec1=20, dec2=80, FluxLim=False,
+                             obs_year=5, Spectra=True, Plot=True, save=True, chooseHIMF=False)
     
     
