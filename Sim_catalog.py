@@ -23,7 +23,7 @@ params = comm.bcast((params),root=0)
 
 # Generate catalog (in parallel)
 catalog = setup_catalog(params, rank, comm)
-spectra = make_spectra(catalog, params, rank, comm)
+spectra, SNR = make_spectra(catalog, params, rank, comm)
 sourcesVec = setup_sourceVectors(params, ra=catalog[4], dec=catalog[5])
 
 full_catalog = comm.gather(catalog,root=0)
