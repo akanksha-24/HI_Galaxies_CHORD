@@ -10,18 +10,6 @@ import signal
 from Generate_Spectra import *
 from mpi4py import MPI
 
-def choose_SchechParams(alpha_=-1.25, del_alpha=0.1, M_s_=10**9.94, del_M_s=10**9.94*np.log(10)*0.051,
-                        phi_s_=4.5e-3, del_phi_s=np.sqrt(0.2**2 + 0.8**2)*1e-3, choose=True):
-    if choose:
-        alpha = np.random.normal(loc=alpha_, scale=del_alpha, size=1)
-        M_s = np.random.normal(loc=M_s_, scale=del_M_s, size=1)
-        phi_s = np.random.normal(loc=phi_s_, scale=del_phi_s, size=1)
-    else:
-        alpha=-1.25
-        M_s=10**9.94
-        phi_s=4.5e-3  
-    return alpha, M_s, phi_s
-
 def Vmax_corr(SNR, z, sigma, solidang, zsurvey=None, zmin=None):
     D = cosmo.comoving_distance(z).to_value(u.Mpc)
     if zsurvey is None:
@@ -255,7 +243,7 @@ def MonteCarlo_HIMF_parallel(zmax=0.1, dec1=20, dec2=80, trials=1000, zmin=0, si
 
 if __name__ == "__main__":
     #MonteCarlo_HIMF_parallel(trials=1001, zmin=0.0011, zmax=1, dec1=20, dec2=50, obs_year=1, Spectra=True, Plot=False)
-    MonteCarlo_HIMF_parallel(trials=1, zmin=0, zmax=0.01, dec1=20, dec2=80, FluxLim=False,
-                             obs_year=5, Spectra=True, Plot=True, save=True, chooseHIMF=False)
+    MonteCarlo_HIMF_parallel(trials=1, zmin=0, zmax=0.01, dec1=20, dec2=30, FluxLim=False,
+                             obs_year=1, Spectra=True, Plot=True, save=True, chooseHIMF=False)
     
     

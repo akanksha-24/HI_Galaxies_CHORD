@@ -136,7 +136,7 @@ def assign_units(x, B, W50, z, MHI_desired, faxis=None, thermal_broaden=True, ch
     if faxis is None:
         Vres = width_freq2vel(5, z=0)
     else:
-        fres = faxis[1] - faxis[0]
+        fres = (faxis[1] - faxis[0]) / 1e6 # convert to MHz
         Vres = width_freq2vel(fres, z=0)
 
     FWHM = find_FWHM(x, B)
