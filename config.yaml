@@ -20,7 +20,7 @@ M_s: ~
 alpha: ~
 lgMHI_min: 5             # minimum MHI mass to drawn from HIMF
 lgMHI_max: 12            # maximum MHI mass to draw from HIMF
-FluxCut: 1               # Choose between 0-1. 
+FluxCut: 0.1             # Choose between 0-1. 
                          # If FluxCut=0 generate a volume limited catalog, else apply a flux cut with MHI > MHI_det*FluxCut
 
 # Spectra parameters
@@ -30,7 +30,7 @@ fres: 195.3125           # frequency resolution (in kHz), the native resolution 
 thermal_sigma: 10        # thermal broadening - sigma of Gaussian to convolve with
 
 # For comparison to theoretical RMS           
-obs_yr: 1                # observation time (in years)
+obs_yr: 5                # observation time (in years)
 sigma: 6                 # integrated signal to noise threshold
 delta_dec: 2.5           # declination separation between pointings in degrees
 switching_time: 7        # time it takes to repoint the dishes (in days) 
