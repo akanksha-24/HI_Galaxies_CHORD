@@ -26,7 +26,7 @@ catalog = setup_catalog(params, rank, comm)
 spectra, SNR = make_spectra(catalog, params, rank, comm)
 
 full_catalog = comm.gather(catalog,root=0)
-full_spectra = comm.gather(catalog,root=0)
+full_spectra = comm.gather(spectra,root=0)
 
 if rank==0:
     full_catalog = np.concatenate(full_catalog, axis=1)
