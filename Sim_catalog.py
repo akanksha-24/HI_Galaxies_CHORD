@@ -24,19 +24,21 @@ params = comm.bcast((params),root=0)
 # Generate catalog (in parallel)
 catalog = setup_catalog(params, rank, comm)
 spectra, SNR = make_spectra(catalog, params, rank, comm)
-sourcesVec = setup_sourceVectors(params, ra=catalog[4], dec=catalog[5])
 
 full_catalog = comm.gather(catalog,root=0)
 full_spectra = comm.gather(catalog,root=0)
-full_sourcesVec = comm.gather(catalog,root=0)
 
 if rank==0:
+    full_catalog = np.concatenate(full_catalog, axis=1)
+    full_spectra = np.concatenate(full_spectra, axis=0)
+    sourcesVec = setup_sourceVectors(params, ra=full_catalog[4], dec=full_catalog[5])
+
     if params['save_catalog']:
         np.save(params['output_directory']+'catalog.npy', full_catalog)
     if params['save_spectra']:
         np.save(params['output_directory']+'spectra.npy', full_spectra)
     if params['save_sourceVectors']:
-        np.save(params['output_directory']+'sourceVectors.npy', full_sourcesVec)
+        np.save(params['output_directory']+'sourceVectors.npy', sourcesVec)
 
 
 
