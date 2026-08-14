@@ -1,0 +1,49 @@
+# setup radivs
+setup_radivs: True
+verbose: True
+path_to_radivs: './radivs'
+path_to_radivsexamples: './radivs_examples'
+pixel_resolution: 3      # in units pixels / synthesized beam. Recommned 3-5 pixels/beam
+
+# survey parameters
+zmax: 0.01               # maximum survey redshift 
+zmin: 0                  # minimum survey redshift
+dec1: 20                 # starting declination (in degrees)
+dec2: 50                 # ending declination (in degrees)                
+ra1: 0                   # drift-scan full sky scan ra=0 to 360 deg (angle wrapping is accounted for)
+ra2: 360
+
+# HIMF + MHI parameters
+chooseHIMF: True         # If true, draw HIMF shape from Jones 2018 fit within errors
+phi_s: ~                 # Set custom HIMF parameters: phi, Ms, alpha. If None (~) then use Jones 2018 median values
+M_s: ~ 
+alpha: ~
+lgMHI_min: 5             # minimum MHI mass to drawn from HIMF
+lgMHI_max: 12            # maximum MHI mass to draw from HIMF
+FluxCut: 0.1             # Choose between 0-1. 
+                         # If FluxCut=0 generate a volume limited catalog, else apply a flux cut with MHI > MHI_det*FluxCut
+
+# Spectra parameters
+fmin: 1420               # start of frequency array (in MHz)           
+fmax: 1422               # end of frequency array (in MHz)
+fres: 23.689             # frequency resolution (in kHz), the native resolution is 195.3125 kHz, 23.689 for 5 km/s upchannelized at z=0
+thermal_sigma: 10        # thermal broadening - sigma of Gaussian to convolve with
+
+# For comparison to theoretical RMS           
+obs_yr: 1                # observation time (in years)
+sigma: 6                 # integrated signal to noise threshold
+delta_dec: 2.5           # declination separation between pointings in degrees
+switching_time: 7        # time it takes to repoint the dishes (in days) 
+
+# Output settings
+output_directory: './Catalog/'           # path location to store all outputs
+save_catalog: True                       # save the full catalog (not including spectra)
+save_sourceVectors: True                 # for radvis code in shape (ntheta, nphi, 3) and np.float32 - follows the same indexing as catalog
+save_spectra: True                       # shape (nsources, nchans) 
+diagnostic_Plots: True
+
+# CHORD Params
+CHORD_fmin: 300
+CHORD_fmax: 1500
+
+
