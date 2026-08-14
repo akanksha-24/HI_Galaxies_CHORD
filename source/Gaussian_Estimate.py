@@ -1,7 +1,7 @@
 import numpy as np
 import Galaxy_Functions as gf
 import astropy.units as u
-import Upchannelize as upchan
+#import Upchannelize as upchan
 
 def sigma2FWHM(sigma):
     return sigma * 2 * np.sqrt(2*np.log(2)) 

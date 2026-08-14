@@ -222,13 +222,11 @@ def estimate_DLmax(MHI, z, sigma, RMS_chan, DeltaV, chan_width=chan_width):
 
 def estimate_MHImax(z, sigma, RMS_chan, DeltaV, chan_width=chan_width):
     C = 2.92*10**-4
-    RMS_chan = (RMS_chan*u.mJy).to_value(u.Jy)
+    RMS_chan = RMS_chan*1e-3 # convert from mJy to Jy
     D_L = cosmo.luminosity_distance(z).to_value(u.Mpc)
     MHImax = (sigma*RMS_chan*np.sqrt(chan_width*DeltaV)*D_L**2)/(np.sqrt(1+z)*C)
-    #print(MHImax)
-    MHImax2 = (2.35*10**5)*(sigma*RMS_chan)*(D_L**2)*(np.sqrt(c.c.to_value(u.km/u.s)*chan_width*DeltaV/((1+z)*1420.405751768*1e6)))
-    #print(MHImax2)
-    return MHImax2
+    #MHImax2 = (2.35*10**5)*(sigma*RMS_chan)*(D_L**2)*(np.sqrt(c.c.to_value(u.km/u.s)*chan_width*DeltaV/((1+z)*1420.405751768*1e6)))
+    return MHImax
     
 def Vmax_correct(catalog_file, sigma=6, RMS=0.1, fromD=True, mockAlf=False, solidang=None):
     catalog = np.load(catalog_file)

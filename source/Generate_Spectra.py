@@ -130,9 +130,15 @@ def units_check(V, B, Vaxis, B_resamp, S, S_broad, G, W50, z, MHI_desired, thres
     print(f"Frequency channels {Nchans}")
     
 
-def assign_units(x, B, W50, z, MHI_desired, Vres=5, thermal_broaden=True, check=True):
+def assign_units(x, B, W50, z, MHI_desired, faxis=None, thermal_broaden=True, check=True):
     '''assigns units of velocity (km/s) vs. Flux density (Jy)'''
-    
+
+    if faxis is None:
+        Vres = width_freq2vel(5, z=0)
+    else:
+        fres = faxis[1] - faxis[0]
+        Vres = width_freq2vel(fres, z=0)
+
     FWHM = find_FWHM(x, B)
     # don't allow spectra to be arbitarily narrow 
     if W50 < Vres:
@@ -213,8 +219,8 @@ def conversion_check(f, S, S_broad, faxis, S_resamp, W50, z, MHI_desired, thres=
     plt.show()
     
 
-def assign_freqUnits_convert(x, B, W50, z, MHI_desired, check=True):
-    V, S, S_broad = assign_units(x, B, W50, z, MHI_desired, check=check)
+def assign_freqUnits_convert(x, B, W50, z, MHI_desired, faxis=None, check=True):
+    V, S, S_broad = assign_units(x, B, W50, z, MHI_desired, check=check, faxis=faxis)
     f = gf.convert_f(V, z) * 1e6 #MHz to Hz
     f = f[::-1]
 
@@ -222,8 +228,10 @@ def assign_freqUnits_convert(x, B, W50, z, MHI_desired, check=True):
     freq_obs = gf.get_fobs(z) * 1e6 # in Hz
     
     #put the spectra on the CHORD telescope resolution - upchannelized
-    pad = W50_f_expected*2
-    faxis = np.arange(-pad, pad+upchan_res, upchan_res) + freq_obs
+    if faxis is None:
+        pad = W50_f_expected*2
+        faxis = np.arange(-pad, pad+upchan_res, upchan_res) + freq_obs
+
     S_resamp = np.interp(x=faxis, xp=f, fp=S_broad)
     
     if check:
@@ -329,7 +337,7 @@ def SNRint(f, Sf, z, W50, MHI, RMS_Jy, window=1e-3, check=True):
                
     return SNRint
 
-def Generate_Spectra(MHI, W50, z, RMS_Jy, a=1, w=1, b1=None, b2=None, c=None, xe=None, xp=None, n=None):
+def Generate_Spectra(MHI, W50, z, RMS_Jy, faxis=None, a=1, w=1, b1=None, b2=None, c=None, xe=None, xp=None, n=None):
     ''' Main function which generates an HI Spectrum. 
     The shape of the busy function (specified by a, b1, b2, c) is randomly generated (unless otherwise specified). 
     The area under the profile is set by MHI. 
@@ -352,7 +360,7 @@ def Generate_Spectra(MHI, W50, z, RMS_Jy, a=1, w=1, b1=None, b2=None, c=None, xe
     if n==None: n = np.random.uniform(1, 4) # n=odd number results in negative values, n=4 is too broad
 
     B = Busy_general(x, a, b1, b2, xe, xp, c, w, n)
-    f, Sf = assign_freqUnits_convert(x, B, W50, z=z, MHI_desired=MHI, check=False)
+    f, Sf = assign_freqUnits_convert(x, B, W50, z=z, MHI_desired=MHI, check=False, faxis=faxis)
     SNR_int = SNRint(f, Sf, z, W50, MHI, RMS_Jy, check=False)
                                                    
     #end = time.time()

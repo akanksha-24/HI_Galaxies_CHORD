@@ -13,6 +13,18 @@ import pandas as pd
 import Forecasting as fore
 from CHORD_Sensitivity import *
 
+def choose_SchechParams(alpha_=-1.25, del_alpha=0.1, M_s_=10**9.94, del_M_s=10**9.94*np.log(10)*0.051,
+                        phi_s_=4.5e-3, del_phi_s=np.sqrt(0.2**2 + 0.8**2)*1e-3, choose=True):
+    if choose:
+        alpha = np.random.normal(loc=alpha_, scale=del_alpha, size=1)
+        M_s = np.random.normal(loc=M_s_, scale=del_M_s, size=1)
+        phi_s = np.random.normal(loc=phi_s_, scale=del_phi_s, size=1)
+    else:
+        alpha=-1.25
+        M_s=10**9.94
+        phi_s=4.5e-3  
+    return alpha, M_s, phi_s
+
 def sample_HIMF(N, M_HI, phi_s=gf.phi_s, M_s=gf.M_s, alpha=gf.alpha): 
     # Compute Schechter PDF in log-space
     pdf = gf.schechter_fit_lg(M_HI, phi_s, M_s, alpha)
@@ -66,8 +78,7 @@ def sample_in_shell(D1, D2, N, solidang=4*np.pi, dtype=np.float32):
     return D, V
 
 def Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, D1, D2, zinterp, solidang,  
-                 dtype=np.float32, SNRint=False, RMS=0.2, sigma=6,
-                 phi_s=gf.phi_s, M_s=gf.M_s, alpha=gf.alpha):
+                 dtype=np.float32, phi_s=gf.phi_s, M_s=gf.M_s, alpha=gf.alpha):
     MHI_sample = sample_HIMF(N, MHI, phi_s=phi_s, M_s=M_s, alpha=alpha).astype(dtype) # draw from HIMF
     VHI_sample = gf.VHI_polyFit(MHI_sample, dtype=dtype).astype(dtype) # estimate from abundance matching
     cos_i = np.random.random(N).astype(dtype)   # uniform in [0,1]
@@ -76,14 +87,7 @@ def Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, D1, D2, zinterp, solidang,
     ra_sample, dec_sample = sample_radec(ra1, ra2, dec1, dec2, N, dtype=dtype)
     D_sample, Vol_sample = sample_in_shell(D1, D2, N, solidang, dtype=dtype)
     z_sample = zinterp(D_sample)
-    #print(np.min(z_sample))
-    #Vol_drawn = np.full(N, V2.value)
-    if SNRint:
-        mask, _ = fore.SNRint_detections(MHI=MHI_sample, W50=W50_sample, z=z_sample, RMS=RMS, sigma=sigma)
-        samples = np.column_stack([MHI_sample[mask], VHI_sample[mask], i_sample[mask], W50_sample[mask], 
-                                   ra_sample[mask], dec_sample[mask], D_sample[mask], Vol_sample[mask], z_sample[mask]])
-    else:
-        samples = np.column_stack([MHI_sample, VHI_sample, i_sample, W50_sample, ra_sample, dec_sample, D_sample, Vol_sample, z_sample])
+    samples = np.column_stack([MHI_sample, VHI_sample, i_sample, W50_sample, ra_sample, dec_sample, D_sample, Vol_sample, z_sample])
     return samples
 
 def Save_Catalog_npz(samples, zmax, solidang, flname, z_arr, N_arr):
@@ -105,11 +109,11 @@ def Save_Catalog_npz(samples, zmax, solidang, flname, z_arr, N_arr):
 
 
 def Gen_Catalog(zmax, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
-                    footprint=None, Fluxlim=False, sigma=1,
-                    noise=1e-4, vel_width=10, MHIres=10000,
-                    draw=True, fltype='npy', flname='catalog.npy',
-                    savelarge=True, dtype=np.float32, SNRint=False, sigma_int=6, RMS=0.2, save=True,
-                    phi_s=gf.phi_s, M_s=gf.M_s, alpha=gf.alpha, obs_year=5, comm=None, gather=True):
+                obs_year=5, beam_sep=2.5, switch_int=7, delta_nu=23.7,
+                footprint=None, FluxCut=0, MHIres=10000,
+                draw=True, flname='catalog.npy', dtype=np.float32, 
+                SNRint=False, sigma_int=6, RMS=0.2, save=False,
+                phi_s=gf.phi_s, M_s=gf.M_s, alpha=gf.alpha, comm=None, gather=True):
     
     if comm is None:
         comm = MPI.COMM_SELF
@@ -119,7 +123,7 @@ def Gen_Catalog(zmax, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
     start = time.time()
 
     if rank==0:
-        print("starting Job...")
+        print("starting catalog generation...")
 
     z_step = 1e-4
     npt = zmax/z_step
@@ -149,16 +153,16 @@ def Gen_Catalog(zmax, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
 
     local_samples = []
     local_Narr = []
+    chan_width = delta_nu * 1e3 # convert from kHz to Hz
 
     for i in rank_indices:
-        if Fluxlim:
-            #F_lim = sigma * noise
-            #MHImin_i = np.log10(gf.S_toMHI(F_lim, vel_width, D[i], unitless=True))
-            _, RMS_, _ = build_survey(obs_years=obs_year, z=z[i], start=dec1, end=dec2)
-            MHI_lim = gf.estimate_MHImax(z=z[i], sigma=6, RMS_chan=RMS_,  DeltaV=20, chan_width=gf.width_vel2freq(5))
-            MHImin_i = np.log10(MHI_lim)-0.5
-            MHImin_i = max(5, MHImin_i)
-            #print("MHImin is ", MHImin_i)
+        # if Flux==0 then draw a volume-limited catalog, else Flux limited catalog 
+        # (where FluxCut=1 is right at the detection limit based on W50 spectra estimate)
+        if FluxCut!=0:
+            _, RMSmJy, _ = build_survey(obs_years=obs_year, z=z[i], start=dec1, end=dec2, beam_sep=beam_sep, switch_int=switch_int)
+            MHI_lim = gf.estimate_MHImax(z=z[i], sigma=sigma_int, RMS_chan=RMSmJy,  DeltaV=24, chan_width=chan_width)
+            MHImin_i = np.log10(MHI_lim*FluxCut)
+            MHImin_i = max(MHImin, MHImin_i)
             MHI = np.logspace(MHImin_i, MHImax, MHIres)
             n = gf.galaxy_density(MHI, phi_s=phi_s, M_s=M_s, alpha=alpha)
 
@@ -170,22 +174,21 @@ def Gen_Catalog(zmax, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
             if i == 0:
                 if zmin==0:
                     samples_ = Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, 0, D[i], z_interp, 
-                                            solidang, dtype=dtype, SNRint=SNRint, sigma=sigma_int, RMS=RMS,
-                                            phi_s=phi_s, M_s=M_s, alpha=alpha)
+                                            solidang, dtype=dtype, phi_s=phi_s, M_s=M_s, alpha=alpha)
                 else:
                     continue
             else:
                 samples_ = Draw_Samples(N, MHI, ra1, ra2, dec1, dec2, D[i-1], D[i], z_interp, 
-                                        solidang, dtype=dtype, SNRint=SNRint, sigma=sigma_int, RMS=RMS,
-                                        phi_s=phi_s, M_s=M_s, alpha=alpha)
+                                        solidang, dtype=dtype, phi_s=phi_s, M_s=M_s, alpha=alpha)
             local_samples.append(samples_)
-    if rank==0:
-        print("Saving samples...")
+
     if draw:
         rank_filename = f"{flname}_rank{rank}.npy"
         local_arrays = (np.vstack(local_samples) if len(local_samples) > 0 else np.empty((0,9), dtype=dtype)).T
         #print("minimum z drawn is ", np.min(local_arrays.T[8]))
         if save:
+            if rank==0:
+                print("Saving samples...")
             np.save(rank_filename, local_arrays)
 
     local_number = sum(local_Narr)
@@ -203,7 +206,7 @@ def Gen_Catalog(zmax, dec1, dec2, zmin=0, ra1=0, ra2=360, MHImin=5, MHImax=12,
             flush=True,
         )
         print(
-            f"[Rank 0] Total runtime: {end - start:.2f} sec",
+            f"[Rank 0] Total catalog runtime: {end - start:.2f} sec",
             flush=True,
         )
     if draw:
