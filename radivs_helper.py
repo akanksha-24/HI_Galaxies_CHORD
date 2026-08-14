@@ -50,7 +50,8 @@ def get_faxis(params):
     newFreqmin = CHORD_fmin + bandwidth*channelMin
     newFreqmax = CHORD_fmin + bandwidth*channelMax
     newNfreq = int(channelMax - channelMin)
-    faxis = np.linspace(newFreqmin, newFreqmax, newNfreq)
+    faxis = np.linspace(newFreqmin, newFreqmax, newNfreq) # in MHz
+    faxis = faxis * 1e6 # convert to Hz
     return faxis
 
 def setup_SkyVectors(params):
@@ -127,7 +128,6 @@ def make_spectra(catalog, params, rank, comm):
     print("size is ", size)
     MHI = catalog[0]
     W50 = catalog[3]
-    D = catalog[6]
     z = catalog[8]
     W50_broad = W50_broadened(W50)
 
@@ -141,14 +141,14 @@ def make_spectra(catalog, params, rank, comm):
         faxis = get_faxis(params)
     else:
         faxis = None
-    params = comm.bcast((faxis),root=0)
+    faxis = comm.bcast((faxis),root=0)
 
     SNR_spectra = np.zeros(SNR_catalog.shape)
     S_Jy = np.zeros((catalog.shape[1], faxis.shape[0]))
 
     for j in np.arange(size):
         SNR_spectra[j], _, S_Jy[j] = Generate_Spectra(MHI=MHI[j], W50=W50[j], z=z[j], RMS_Jy=RMS_Jy[j], faxis=faxis)
-    return S_Jy
+    return S_Jy, SNR_spectra
 
 
 

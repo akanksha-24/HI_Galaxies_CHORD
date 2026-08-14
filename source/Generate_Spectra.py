@@ -225,18 +225,18 @@ def assign_freqUnits_convert(x, B, W50, z, MHI_desired, faxis=None, check=True):
     f = f[::-1]
 
     W50_f_expected = gf.width_vel2freq(W50_broadened(W50), z)
-    freq_obs = gf.get_fobs(z) * 1e6 # in Hz
-    
+
     #put the spectra on the CHORD telescope resolution - upchannelized
     if faxis is None:
         pad = W50_f_expected*2
+        freq_obs = gf.get_fobs(z) * 1e6 # in Hz
         faxis = np.arange(-pad, pad+upchan_res, upchan_res) + freq_obs
 
     S_resamp = np.interp(x=faxis, xp=f, fp=S_broad)
     
     if check:
         conversion_check(f, S, S_broad, faxis, S_resamp, W50, z, MHI_desired)
-    return faxis, S_resamp
+    return faxis, S_resamp # in Hz and Jy
 
 def assign_freqUnits(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5):
     #f_con, S_con = assign_freqUnits_convert(x, B, W50, D, z, MHI_desired, coarseRes=False, Vel_res=5)

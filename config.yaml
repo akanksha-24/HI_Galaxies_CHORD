@@ -8,10 +8,10 @@ pixel_resolution: 3      # in units pixels / synthesized beam. Recommned 3-5 pix
 # survey parameters
 zmax: 0.01               # maximum survey redshift 
 zmin: 0                  # minimum survey redshift
-dec1: 20                 # starting declination (in degrees)
+dec1: 40                 # starting declination (in degrees)
 dec2: 50                 # ending declination (in degrees)                
 ra1: 0                   # drift-scan full sky scan ra=0 to 360 deg (angle wrapping is accounted for)
-ra2: 360
+ra2: 10
 
 # HIMF + MHI parameters
 chooseHIMF: True         # If true, draw HIMF shape from Jones 2018 fit within errors
@@ -20,13 +20,13 @@ M_s: ~
 alpha: ~
 lgMHI_min: 5             # minimum MHI mass to drawn from HIMF
 lgMHI_max: 12            # maximum MHI mass to draw from HIMF
-FluxCut: 0.1             # Choose between 0-1. 
+FluxCut: 1               # Choose between 0-1. 
                          # If FluxCut=0 generate a volume limited catalog, else apply a flux cut with MHI > MHI_det*FluxCut
 
 # Spectra parameters
-fmin: 1420               # start of frequency array (in MHz)           
+fmin: 1400               # start of frequency array (in MHz)           
 fmax: 1422               # end of frequency array (in MHz)
-fres: 23.689             # frequency resolution (in kHz), the native resolution is 195.3125 kHz, 23.689 for 5 km/s upchannelized at z=0
+fres: 195.3125           # frequency resolution (in kHz), the native resolution is 195.3125 kHz, 23.689 for 5 km/s upchannelized at z=0
 thermal_sigma: 10        # thermal broadening - sigma of Gaussian to convolve with
 
 # For comparison to theoretical RMS           
