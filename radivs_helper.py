@@ -73,8 +73,8 @@ def setup_radivs(params):
 
     radivs_params = [Nchans, channelMin, channelMax, extent_RA, extent_Dec, base_RA, base_Dec, npix_x, npix_y]
 
-    np.savez(params['output_directory']+'radivs_setup.npz', Nchans, channelMin, channelMax,
-             extent_RA, extent_Dec, base_RA, base_Dec, npix_x, npix_y)
+    np.savez(params['output_directory']+'radivs_setup.npz', Nchans=Nchans, channelMin=channelMin, channelMax=channelMax,
+             extent_RA=extent_RA, extent_Dec=extent_Dec, base_RA=base_RA, base_Dec=base_Dec, npix_x=npix_x, npix_y=npix_y)
 
     if params['verbose']:
         print("............................ Recommended Radivs parameters ............................")
