@@ -107,7 +107,7 @@ For more information see the Compute Canada [guide](https://docs.alliancecan.ca/
   - set in hh:mm:ss. Try to keep this to under 8-10 hours, otherwise you will be queued for longer
 
 ## 4. example_galaxyCatalog.py
-This file shows an example of how to plug in the catalog into the radivs pipeline
+This file shows an example of how to plug in the catalog into the radivs pipeline. You may copy this into your radivs_examples directory and run with `python example_galaxyCatalog.py` to run the radivs pipeline.
 
 ## 5. Catalog outputs
 ### catalog.npy 
