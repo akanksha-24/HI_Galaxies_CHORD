@@ -1,8 +1,8 @@
 # setup radivs
 setup_radivs: True
 verbose: True
-path_to_radivs: './radivs'
-path_to_radivsexamples: './radivs_examples'
+path_to_radivs: '/home/akanksha/radivs'
+path_to_radivsexamples: '/home/akanksha/radivs_examples'
 pixel_resolution: 3      # in units pixels / synthesized beam. Recommned 3-5 pixels/beam
 
 # survey parameters
