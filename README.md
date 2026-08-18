@@ -41,39 +41,39 @@ To setup the catalog configuration, modify the `config.yaml` file to the type of
 - **FluxCut** 
   - This value will set whether you want a Volume-limited catalog (i.e all sources that should theoretically be present based on the HIMF) or Flux-limited catalog (i.e sources that are brighter than a given threshold). Set this number to be between 0-1. `FluxCut=0` generates a volume limited catalog. `Fluxcut > 0` applies a flux cut with MHI > MHI_det*FluxCut where MHI_det is the MHI limit expected to be detected by CHORD using Equation 10 in Bij et al. 2026. For example, `FluxCut=0.1` will produce a catalog of sources that are at least 10% as massive as the detection limit. `FluxCut=1` will make a catalog of sources expected to be above the CHORD detection limit for an integrated signal to noise > 6. 
 ### Spectra Parameters
--**fmin**
+- **fmin**
   - lowest frequency of the spectral axis in MHz. To not cut-off any spectra, make sure this matches zmax.    
--**fmax**
+- **fmax**
   - highest frequency of the spectral axis in MHz. fmax should be greater than fmin
--**fres**
+- **fres**
   - frequency resolution in kHz. Note the native CHORD resolution is 195.3125 kHz. For upchannelization to 5 km/s at z=0 fres=23.689 kHz
--**flux_units**
+- **flux_units**
   - Set to 1 for Jy, 1000 for mJy and 1000000 for uJy, etc. The output map from radivs will also be in the same units.
 ### RMS Estimation Parameters 
 Set these if you are interested in comparing the RMS noise and SNR estimation from the radiometer equation to radivs. Note that these values assume full drift scans with uniform sensitivity between dec1 and dec2
--**obs_yr**
+- **obs_yr**
   - The number of years you will spend scanning dec1 to dec2
--**sigma**
+- **sigma**
   - The integrated signal to noise threshold above which sources are considered detected. Bij et al. 2026 uses sigma=6
--**delta_dec**
+- **delta_dec**
   - declination separation between pointings in degrees
--**switching_time**
+- **switching_time**
   - time it takes to repoint the dishes (in days) 
 ### Output settings
--**output_directory**
+- **output_directory**
   - path location to store all outputs
--**save_catalog**
+- **save_catalog**
   - True if you want to save the catalog, else False
--**save_sourceVectors**
+- **save_sourceVectors**
   - True if you want to save the source_vectors to be input into radivs in shape (nsources, 3) and np.float32 - follows the same indexing as catalog
--**save_spectra**
+- **save_spectra**
   - True if you want to save the spectra in shape (nsources, nchans) 
--**diagnostic_Plots**
+- **diagnostic_Plots**
   - True if you want to make standard plots of the catalog and spectra to check the outputs
 ### CHORD Params
--**CHORD_fmin**
+- **CHORD_fmin**
 - The minimum CHORD frequency, this should match CHORDObject in radivs
--**CHORD_fmax**
+- **CHORD_fmax**
 - The maximum CHORD frequency, this should match CHORDObject in radivs
 
 
