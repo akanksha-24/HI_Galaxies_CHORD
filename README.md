@@ -72,9 +72,79 @@ Set these if you are interested in comparing the RMS noise and SNR estimation fr
   - True if you want to make standard plots of the catalog and spectra to check the outputs
 ### CHORD Params
 - **CHORD_fmin**
-- The minimum CHORD frequency, this should match CHORDObject in radivs
+  - The minimum CHORD frequency, this should match CHORDObject in radivs
 - **CHORD_fmax**
-- The maximum CHORD frequency, this should match CHORDObject in radivs
+  - The maximum CHORD frequency, this should match CHORDObject in radivs
 
+## 2. Running the catalog simulation
+If you have a short run (say < 1e5 sources), then you can run it serially with:
+```
+python Sim_catalog.py
+``` 
+If you have a large run that requires a parallelization, you can use the batch script `batch_job.sh` provided and run on fir:
+```
+sbatch bacth_job.sh
+```
+This will send your job to the slurm queue. If you want to check how the job is doing run:
+```
+squeue -u <fir username>
+```
+and check the output log generated at `slurm-<jobid>.out`
+
+## 3. Parallel slurm job parameters
+For more information see the Compute Canada [guide](https://docs.alliancecan.ca/wiki/Running_jobs#MPI_job) for MPI Jobs and the CPU architecture of [FIR](https://docs.alliancecan.ca/wiki/Fir#CPU_nodes).
+- **SBATCH --ntasks**
+  - this is the total number of cores that will work in parallel
+- **SBATCH --nodes**
+  - this is the number of nodes you want to run on. For a large job, I recommend 4-16. The more nodes you ask for the longer it may queue you for.
+- **SBATCH --ntasks-per-node**
+  - this is the number of cores running in parallel per node. So ntasks = nodes*ntasks-per-node. For a large job, I recommend setting this to 50-100. The maximum cores is 192 for our node.
+- **SBATCH --cpus-per-task=1**
+  - keep this as 1 for our purposes
+- **SBATCH --mem=750G**
+  - Recommend using the 750G AMD EPYC 9655 (Zen 5) nodes since there are 860 of them and the memory is sufficient
+- **SBATCH --time**
+  - set in hh:mm:ss. Try to keep this to under 8-10 hours, otherwise you will be queued for longer
+
+## 4. example_galaxyCatalog.py
+This file shows an example of how to plug in the catalog into the radivs pipeline
+
+## 5. Catalog outputs
+### catalog.npy 
+The galaxy catalog will be saved in a file `catalog.npy` as numpy array with shape (10, nsources). The catalog contains the following information
+```
+catalog = np.load('catalog.npy')
+```
+1. `MHI = catalog[0]` is the HI mass of the source in solar masses
+2. `Vrot = catalog[1]` is the rotational velocity of the source in km/s 
+3.  `i = catalog[2]` is the inclination of the source in radians
+4.  `W_50 = catalog[3]`is the spectral width measured at FWHM
+5. `ra = catalog[4]` is the RA position in degrees
+6. `dec = catalog[5]` is the declination position in degrees
+7. `D = catalog[6]` is the co-moving distance to the source in Mpc
+8. `Vol = catalog[7]` is the volume associated with the source distance in Mpc**3  
+9. `z = catalog[8]` is the redshift of the source
+10. `SNR = catalog[9]` is the signal-to-noise of the source from the integrated spectra and estimated RMS from the radiometer equation
+
+### radivs_setup.npz
+This file contains the input parameters to radivs_examples to match the catalog to the simulation. It contains:
+```
+setup = np.load('radivs_setup.npz')
+```
+1. `setup['Nchans']` is the number of channels to be specified for the CHORDObject
+2. `setup['channelMin']` is the min channel to be specified for TelescopeFrequencySubrange to match fmin in the config file
+3. `setup['channelMax']` is the max channel to be specified for TelescopeFrequencySubrange to match fmin in the config file
+4. `setup['extent_RA']` is the RA extent to be specified when making SkyVectors for the radivs map
+5. `setup['extent_Dec']` is the Dec extent to be specified when making SkyVectors for the radivs map
+6. `setup['base_RA']` is the RA base to be specified when making SkyVectors for the radivs map
+7. `setup['npix_x']` is the number of pixels in the x direction when making SkyVectors for the radivs map
+8. `setup['npix_y']` is the number of pixels in the y direction when making SkyVectors for the radivs map
+9. `setup['brightness_threshold']` is the flux cutoff (in the units of the spectra) below which the matched filter will ignore spectra channels
+
+### spectra.npy
+This is the spectra of all sources in shape (nsources, nchans). The units of the flux density of those as specified in the config file. The frequency axis is set to match CHORD_frequencySubrange.getFrequencyArray()
+
+### sourceVectors.npy
+This is the sources_vectors that will be put into radivs SourcesInfo in shape (nsources, 3). They are the x,y,z vectors pointing to the RA,Dec positions of the sources using `ang2vec` in `helper.py` in `radivs_examples`
 
 
