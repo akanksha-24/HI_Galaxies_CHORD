@@ -76,5 +76,35 @@ Set these if you are interested in comparing the RMS noise and SNR estimation fr
 - **CHORD_fmax**
 - The maximum CHORD frequency, this should match CHORDObject in radivs
 
+## 2. Running the catalog simulation
+If you have a short run (say < 1e5 sources) that can be run serially then simply run:
+```
+python Sim_catalog.py
+``` 
+If you have a large run that requires a parallelization, you can use the batch script `batch_job.sh` provided and run on fir:
+```
+sbatch bacth_job.sh
+```
+This will send you job to the slurm queue. If you want to check how the job is doing run:
+```
+squeue -u <fir username>
+```
+and check the output log generated at `slurm-<jobid>.out`
 
+## 3. Parallel slurm job parameters
+For more information see the Compute Canada [guide](https://docs.alliancecan.ca/wiki/Running_jobs#MPI_job) for MPI Jobs and the CPU architecture of [FIR](https://docs.alliancecan.ca/wiki/Fir#CPU_nodes).
+-**SBATCH --ntasks**
+  - this is the total number of cores that will work in parallel
+-**SBATCH --nodes**
+  - this is the number of nodes you want to run on. For a large job, I recommend 4-16. The more nodes you ask for the longer it may queue you for.
+-**SBATCH --ntasks-per-node**
+  - this is the number of cores running in parallel per node. So ntasks = nodes*ntasks-per-node. For a large job, I recommend setting this to 50-100. 
+-**SBATCH --cpus-per-task=1**
+  - keep this as 1 for our purposes
+-**SBATCH --mem=750G**
+  - Recommend using the 750G AMD EPYC 9655 (Zen 5) nodes since there are 860 of them and the memory is sufficient
+-**SBATCH --time=00:10:00**
+  - set in hh:mm:ss. Try to keep this to under 8-10 hours, otherwise you will be queued for longer
+
+## 4. Catalog outputs
 
