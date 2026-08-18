@@ -6,6 +6,7 @@ from Galaxy_Functions import *
 from CHORD_Sensitivity import *
 from Gaussian_Estimate import *
 from Generate_Spectra import *
+import time
 
 def validate_config(params):
     if params['zmax'] < params['zmin']:
@@ -67,14 +68,15 @@ def setup_SkyVectors(params):
     npix_y =  int(extent_Dec * pixels_per_degree)
     return extent_RA, extent_Dec, base_RA, base_Dec, npix_x, npix_y
 
-def setup_radivs(params):
+def setup_radivs(params, brightness_threshold):
     Nchans, channelMin, channelMax, _  = setup_CHORDobject(params)
     extent_RA, extent_Dec, base_RA, base_Dec, npix_x, npix_y = setup_SkyVectors(params)
 
-    radivs_params = [Nchans, channelMin, channelMax, extent_RA, extent_Dec, base_RA, base_Dec, npix_x, npix_y]
+    radivs_params = [Nchans, channelMin, channelMax, extent_RA, extent_Dec, base_RA, base_Dec, npix_x, npix_y, brightness_threshold]
 
-    np.savez(params['output_directory']+'radivs_setup.npz', Nchans=Nchans, channelMin=channelMin, channelMax=channelMax,
-             extent_RA=extent_RA, extent_Dec=extent_Dec, base_RA=base_RA, base_Dec=base_Dec, npix_x=npix_x, npix_y=npix_y)
+    np.savez(params['output_directory']+'radivs_setup.npz', Nchans=Nchans, channelMin=channelMin, channelMax=channelMax, 
+             brightness_threshold=brightness_threshold, extent_RA=extent_RA, extent_Dec=extent_Dec, 
+             base_RA=base_RA, base_Dec=base_Dec, npix_x=npix_x, npix_y=npix_y)
 
     if params['verbose']:
         print("............................ Recommended Radivs parameters ............................")
@@ -87,6 +89,7 @@ def setup_radivs(params):
         print(f"base Dec is {base_Dec}")
         print(f"npix_x is {npix_x}")
         print(f"npix_y is {npix_y}")
+        print(f"brightness threshold is {brightness_threshold}")
         print("............................................................................")
     return radivs_params
 
@@ -97,7 +100,7 @@ def setup_sourceVectors(params, ra, dec):
     from helper import ang2vec
     theta_colat = np.deg2rad(90-dec)
     phi = np.deg2rad(ra)
-    sourcesVec = ang2vec(theta_colat, phi)
+    sourcesVec = ang2vec(theta_colat, phi, gridmode=False)
     return sourcesVec
 
 def setup_catalog(params, rank, comm):
@@ -124,6 +127,9 @@ def setup_catalog(params, rank, comm):
     return catalog
 
 def make_spectra(catalog, params, rank, comm):
+    if rank==0:
+        print('Starting spectra generation...')
+    start = time.time()
     size = catalog.shape[1]
     print("size is ", size)
     MHI = catalog[0]
@@ -137,7 +143,6 @@ def make_spectra(catalog, params, rank, comm):
     SNR_catalog = SNR_int(z, MHI, W50_broad, RMS_Jy, chan_width=params['fres'])
 
     if rank==0:
-        print('Generating spectra...')
         faxis = get_faxis(params)
     else:
         faxis = None
@@ -148,8 +153,11 @@ def make_spectra(catalog, params, rank, comm):
 
     for j in np.arange(size):
         SNR_spectra[j], _, S_Jy[j] = Generate_Spectra(MHI=MHI[j], W50=W50[j], z=z[j], RMS_Jy=RMS_Jy[j], faxis=faxis)
+    if rank==0:
+        end = time.time()
+        print('Completed spectra generation...')
+        print()
     return S_Jy, SNR_spectra
-
 
 
 

@@ -1,8 +1,8 @@
 # setup radivs
 setup_radivs: True
 verbose: True
-path_to_radivs: '/home/akanksha/radivs'
-path_to_radivsexamples: '/home/akanksha/radivs_examples'
+path_to_radivs: './radivs'
+path_to_radivsexamples: './radivs_examples'
 pixel_resolution: 3      # in units pixels / synthesized beam. Recommned 3-5 pixels/beam
 
 # survey parameters
@@ -14,7 +14,7 @@ ra1: 0                   # drift-scan full sky scan ra=0 to 360 deg (angle wrapp
 ra2: 10
 
 # HIMF + MHI parameters
-chooseHIMF: True         # If true, draw HIMF shape from Jones 2018 fit within errors
+chooseHIMF: False        # If true, draw HIMF shape from Jones 2018 fit within errors
 phi_s: ~                 # Set custom HIMF parameters: phi, Ms, alpha. If None (~) then use Jones 2018 median values
 M_s: ~ 
 alpha: ~
@@ -28,6 +28,7 @@ fmin: 1400               # start of frequency array (in MHz)
 fmax: 1422               # end of frequency array (in MHz)
 fres: 195.3125           # frequency resolution (in kHz), the native resolution is 195.3125 kHz, 23.689 for 5 km/s upchannelized at z=0
 thermal_sigma: 10        # thermal broadening - sigma of Gaussian to convolve with
+flux_units: 1            # set to 1 for Jy, 1000 for mJy and 1000000 for uJy, etc.
 
 # For comparison to theoretical RMS           
 obs_yr: 5                # observation time (in years)
