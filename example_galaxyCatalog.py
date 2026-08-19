@@ -8,7 +8,7 @@ from plot import plot_map_radec
 if __name__ == "__main__":
 	path_to_catalog = '/home/akanksha/chord/HI_Galaxies_CHORD/Catalog/'
 	radivs_setup = np.load(path_to_catalog+'radivs_setup.npz')
-	spectra = np.load(path_to_catalog+'spectra.npy').astype(np.float32)
+	spectra = (np.load(path_to_catalog+'spectra.npy')).astype(np.float32)
 	source_vectors = np.load(path_to_catalog+'sourceVectors.npy').astype(np.float32)
 
 	npix_x = radivs_setup['npix_x']
@@ -23,7 +23,7 @@ if __name__ == "__main__":
 	channelMin = int(radivs_setup['channelMin'])
 	channelMax = int(radivs_setup['channelMax'])
 	brightness_threshold = radivs_setup['brightness_threshold']
-	source_width_nchannels = 5 # set for now, TBD
+	source_width_nchannels = 1 # set for now, TBD
 	
 
 	skyVectors = get_radec_pixelvecs(npix_x, npix_y, base_Dec, base_RA, extent_Dec, extent_RA)
@@ -62,10 +62,10 @@ if __name__ == "__main__":
 	print("Finished computing Matched Filter. Total time ", t2-t1, "s")
 
 	#for plotting
-	frequency_array = CHORD_frequencySubrange.getFrequencyArray()
-	plot_map_radec (LCM_total, frequency_array, npix_x, npix_y, base_Dec, base_RA, extent_Dec, extent_RA, filename="plots/LCM_animation", title="LCM animation")
-	plot_map_radec(MLM, frequency_array, npix_x, npix_y, base_Dec, base_RA, extent_Dec, extent_RA, filename="plots/MLM_animation", title="MLM animation")
-	plot_map_radec(MF, frequency_array, npix_x, npix_y, base_Dec, base_RA, extent_Dec, extent_RA, filename="plots/MF_animation", title="MF animation")
+	#frequency_array = CHORD_frequencySubrange.getFrequencyArray()
+	#plot_map_radec (LCM_total, frequency_array, npix_x, npix_y, base_Dec, base_RA, extent_Dec, extent_RA, filename="plots/LCM_animation", title="LCM animation")
+	#plot_map_radec(MLM, frequency_array, npix_x, npix_y, base_Dec, base_RA, extent_Dec, extent_RA, filename="plots/MLM_animation", title="MLM animation")
+	#plot_map_radec(MF, frequency_array, npix_x, npix_y, base_Dec, base_RA, extent_Dec, extent_RA, filename="plots/MF_animation", title="MF animation")
 	
 	#producing catalogue
 	#need to create a skyinfo dict
