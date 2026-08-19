@@ -143,7 +143,7 @@ def make_spectra(catalog, params, rank, comm):
     SNR_catalog = SNR_int(z, MHI, W50_broad, RMS_Jy, chan_width=params['fres'])
 
     if rank==0:
-        faxis = get_faxis(params)
+        faxis = get_faxis(params) # u.Hz
     else:
         faxis = None
     faxis = comm.bcast((faxis),root=0)

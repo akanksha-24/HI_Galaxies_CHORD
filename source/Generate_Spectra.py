@@ -91,22 +91,30 @@ def units_check(V, B, Vaxis, B_resamp, S, S_broad, G, W50, z, MHI_desired, thres
     Nchans = spectra_extent_kHz / (upchan_res/1e3)
     
     plt.figure()
+    plt.title('Velocity vs Busy')
     plt.plot(V,B, label='scaled to width')
     plt.plot(Vaxis,B_resamp, label='padded')
+    plt.xlabel('Velocity (km/s)')
     plt.legend()
     plt.show()
     
     plt.figure(figsize=[10,8])
+    plt.title('Resampled velocity vs Flux')
     plt.plot(Vaxis, S, label='scaled to height')
     plt.plot(Vaxis, S_broad, label='thermal broadened')
+    plt.xlabel('Velocity (km/s)')
+    plt.ylabel('Flux Density (Jy)')
     #plt.xlim(-W50_broad, W50_broad)
     plt.legend()
     plt.show()
     
     plt.figure()
+    plt.title('Resampled velocity vs thermally broadended spectra')
     plt.plot(Vaxis, S_broad, label='thermal broadened')
-    plt.axvline(np.min(Vaxis[channels]))
-    plt.axvline(np.max(Vaxis[channels]))
+    plt.axvline(np.min(Vaxis[channels]), linestyle='--', color='gray')
+    plt.axvline(np.max(Vaxis[channels]), linestyle='--', color='gray')
+    plt.xlabel('Velocity (km/s)')
+    plt.ylabel('Flux Density (Jy)')
     plt.legend()
     plt.show()
     
@@ -137,7 +145,9 @@ def assign_units(x, B, W50, z, MHI_desired, faxis=None, thermal_broaden=True, ch
         Vres = width_freq2vel(5, z=0)
     else:
         fres = (faxis[1] - faxis[0]) / 1e6 # convert to MHz
+        #print("fres is ", fres)
         Vres = width_freq2vel(fres, z=0)
+        #print("Vres is ", Vres)
 
     FWHM = find_FWHM(x, B)
     # don't allow spectra to be arbitarily narrow 
@@ -205,16 +215,20 @@ def conversion_check(f, S, S_broad, faxis, S_resamp, W50, z, MHI_desired, thres=
     #print(S_broad)
     
     plt.figure(figsize=[10,8])
+    plt.title('converted to frequency')
     plt.plot(f, S)
     plt.plot(f, S_broad, linestyle='--')
     plt.plot(faxis, S_resamp, linestyle=':')
+    plt.xlabel('Freq (Hz)')
+    plt.ylabel('Flux density (Jy)')
     #plt.xlim(-W50_f_expected*1e3+freq_obs, W50_f_expected*1e3+freq_obs)
     plt.show()
     
     plt.figure(figsize=[10,8])
+    plt.title('converted to frequency, resampled')
     plt.plot(faxis, S_resamp, linestyle=':')
-    plt.axvline(np.min(faxis[channels]))
-    plt.axvline(np.max(faxis[channels]))
+    plt.axvline(np.min(faxis[channels]), linestyle='--', color='gray')
+    plt.axvline(np.max(faxis[channels]), linestyle='--', color='gray')
     #plt.xlim(-W50_f_expected*1e3+freq_obs, W50_f_expected*1e3+freq_obs)
     plt.show()
     

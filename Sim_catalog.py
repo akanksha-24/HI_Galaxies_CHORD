@@ -37,7 +37,7 @@ if rank==0:
     # setup radivs parameters
     if params['setup_radivs']:
         spectra_peaks = np.max(full_spectra, axis=1)
-        brightness_threshold = np.min(spectra_peaks)*1e-4
+        brightness_threshold = np.min(spectra_peaks)*1e-3
         setup_radivs(params, brightness_threshold)
 
     # save
