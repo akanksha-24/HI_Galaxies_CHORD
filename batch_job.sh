@@ -15,7 +15,6 @@ source /cvmfs/soft.computecanada.ca/config/profile/bash.sh
 module --force purge
 module use /project/rrg-kmsmith/shared/chord_env/modules/modulefiles/
 module load chord/chord_pipeline/2023.06
-module load cudacore/.12.2.2
 
 cd /home/akanksha/projects/def-spekkens-ab/akanksha/chord/HI_Galaxies_CHORD/
 mpirun -n 4 python -u Sim_catalog.py
