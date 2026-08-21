@@ -9,7 +9,6 @@ from scipy.interpolate import UnivariateSpline
 from scipy.signal import fftconvolve
 import time
 #from mpi4py import MPI
-import numba as nb
 from math import erf
 import Galaxy_Functions as gf
 from Gaussian_Estimate import *
