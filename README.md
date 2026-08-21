@@ -77,6 +77,10 @@ Set these if you are interested in comparing the RMS noise and SNR estimation fr
   - The maximum CHORD frequency, this should match CHORDObject in radivs
 
 ## 2. Running the catalog simulation
+Prerequisites: make sure you have the following installed in your python environment (I use python 3.13.2 on fir)
+- numpy
+- astropy
+- mpi4py
 If you have a short run (say < 1e5 sources), then you can run it serially with:
 ```
 python Sim_catalog.py
